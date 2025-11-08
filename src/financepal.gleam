@@ -7,7 +7,6 @@ import gleam/result
 import mist
 import persistence/asset_registry_repository
 import persistence/database
-import persistence/db_utils
 import persistence/position_records_repository
 import persistence/position_repository
 import persistence/price_data_repository
@@ -26,18 +25,20 @@ pub fn main() -> Nil {
 
   io.println("Database initialized at: " <> db_path)
 
-  let assert Ok(position_records_actor) = position_records_processor.start(db)
+  clear_db(db)
 
+  //start actors
+  let assert Ok(position_records_actor) = position_records_processor.start(db)
   let assert Ok(subject) = price_fetcher.start(db)
   process.send(subject.data, price_fetcher.FetchAllPrices(subject.data))
 
+  // application context
   let ctx =
     Context(db: db, position_records_processor: position_records_actor.data)
 
   let handler = fn(req) { router.handle_request(req, ctx) }
 
-  let _ = clear_db(db)
-
+  // TODO manage secret key
   let assert Ok(_) =
     wisp_mist.handler(handler, "financepal_secret_key")
     |> mist.new
@@ -49,13 +50,12 @@ pub fn main() -> Nil {
   process.sleep_forever()
 }
 
-fn clear_db(db: sqlight.Connection) -> Result(Nil, db_utils.TransactionError(e)) {
+fn clear_db(db: sqlight.Connection) -> Nil {
   let assert Ok(_) = {
     use _ <- result.try(position_repository.delete_all(db))
     use _ <- result.try(position_records_repository.delete_all(db))
     use _ <- result.try(price_data_repository.delete_all(db))
-    let res = asset_registry_repository.delete_all(db)
-    io.println("Successfully cleared db")
-    res
+    asset_registry_repository.delete_all(db)
   }
+  io.println("Successfully cleared db")
 }
