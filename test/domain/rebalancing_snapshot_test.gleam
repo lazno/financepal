@@ -113,11 +113,15 @@ pub fn normal_portfolio_snapshot_test() {
   should.be_true(float.absolute_value(total_weight -. 1.0) <. 0.001)
 
   // Verify: Equity allocation is roughly (AAPL + MSFT + ETF) / total
-  let equity_weight = case dict.get(snapshot.by_instrument_type, "EQUITY") {
+  let equity_weight = case
+    dict.get(snapshot.by_instrument_type, instrument_type("EQUITY"))
+  {
     Ok(w) -> w
     Error(_) -> 0.0
   }
-  let bond_weight = case dict.get(snapshot.by_instrument_type, "BOND") {
+  let bond_weight = case
+    dict.get(snapshot.by_instrument_type, instrument_type("BOND"))
+  {
     Ok(w) -> w
     Error(_) -> 0.0
   }
@@ -262,7 +266,9 @@ pub fn single_position_snapshot_test() {
   // 15000.0
 
   // Verify: 100% allocation to EQUITY
-  let equity_weight = case dict.get(snapshot.by_instrument_type, "EQUITY") {
+  let equity_weight = case
+    dict.get(snapshot.by_instrument_type, instrument_type("EQUITY"))
+  {
     Ok(w) -> w
     Error(_) -> 0.0
   }

@@ -88,6 +88,10 @@ pub fn policy_target_weights(
   target.weights
 }
 
+pub fn policy_target_type(target: PolicyTarget) -> PolicyTargetType {
+  target.target_type
+}
+
 // Domain: PolicySensitivity
 pub opaque type PolicySensitivity {
   PolicySensitivity(rel: Float, floor_pp: Float, cap_pp: Float)

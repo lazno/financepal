@@ -1,8 +1,7 @@
 import domain/common_types.{
-  type OrderReference, account, account_name, asset_name,
-  asset_name_value, isin, isin_value, order_reference, order_reference_value,
-  quantity, quantity_shares, record_date, record_date_value, symbol as symbol_fn,
-  symbol_ticker,
+  type OrderReference, account, account_name, asset_name, asset_name_value, isin,
+  isin_value, order_reference, order_reference_value, quantity, quantity_shares,
+  record_date, record_date_value, symbol as symbol_fn, symbol_ticker,
 }
 import domain/position_types.{
   type PositionRecord, Buy, PositionRecord, position_record_type_from_string,

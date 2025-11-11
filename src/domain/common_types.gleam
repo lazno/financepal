@@ -56,7 +56,12 @@ pub fn asset_name_value(a: AssetName) -> String {
 
 // Domain: Asset 
 pub type Asset {
-  Asset(isin: Isin, symbol: Symbol, name: AssetName, instrument_type: InstrumentType)
+  Asset(
+    isin: Isin,
+    symbol: Symbol,
+    name: AssetName,
+    instrument_type: InstrumentType,
+  )
 }
 
 // Domain: Quantity

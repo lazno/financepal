@@ -1,10 +1,11 @@
 import domain/policy_types.{
-  type Allocation, type MinTradeValue, type Policy, type PolicyId, type PolicyName,
-  type PolicySensitivity, type PolicyTarget, type PolicyTargetKey, type TurnoverCap,
-  Policy, allocation, allocation_value, min_trade_value, min_trade_value_amount,
-  policy_id, policy_id_value, policy_name, policy_name_value, policy_sensitivity,
-  policy_sensitivity_cap_pp, policy_sensitivity_floor_pp, policy_sensitivity_rel,
-  policy_target, policy_target_key, policy_target_key_value, policy_target_weights,
+  type Allocation, type MinTradeValue, type Policy, type PolicyId,
+  type PolicyName, type PolicySensitivity, type PolicyTarget,
+  type PolicyTargetKey, type TurnoverCap, Policy, allocation, allocation_value,
+  min_trade_value, min_trade_value_amount, policy_id, policy_id_value,
+  policy_name, policy_name_value, policy_sensitivity, policy_sensitivity_cap_pp,
+  policy_sensitivity_floor_pp, policy_sensitivity_rel, policy_target,
+  policy_target_key, policy_target_key_value, policy_target_weights,
   turnover_cap, turnover_cap_percentage,
 }
 import gleam/dict
@@ -89,7 +90,10 @@ fn target_dict_to_json(dict: dict.Dict(PolicyTargetKey, Allocation)) -> String {
   |> dict.to_list
   |> list.map(fn(pair) {
     let #(key, allocation) = pair
-    "\"" <> policy_target_key_value(key) <> "\":" <> float.to_string(allocation_value(allocation))
+    "\""
+    <> policy_target_key_value(key)
+    <> "\":"
+    <> float.to_string(allocation_value(allocation))
   })
   |> string.join(",")
   |> fn(content) { "{" <> content <> "}" }
@@ -129,7 +133,7 @@ fn decode_policy() -> decode.Decoder(Policy) {
 
   // Validate targets - panic on failure
   let policy_target = case convert_targets_dict(targets_dict) {
-    Ok(converted_dict) -> 
+    Ok(converted_dict) ->
       case policy_target(policy_types.InstrumentType, converted_dict) {
         Ok(t) -> t
         Error(_) -> panic as "FATAL: Invalid policy targets"

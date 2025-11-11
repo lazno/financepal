@@ -1,6 +1,6 @@
 import domain/common_types
-import gleam/dict.{type Dict}
 import domain/position_types
+import gleam/dict.{type Dict}
 import gleam/list
 
 //
@@ -127,7 +127,9 @@ fn calculate_position_quantity(
   let total_buy_quantity = calculate_total_quantity(buys)
   let total_sell_quantity = calculate_total_quantity(sells)
 
-  case common_types.subtract_quantities(total_buy_quantity, total_sell_quantity) {
+  case
+    common_types.subtract_quantities(total_buy_quantity, total_sell_quantity)
+  {
     Ok(quantity) -> quantity
     Error(_) -> {
       // Return zero quantity if result would be negative

@@ -1,16 +1,41 @@
 import domain/common_types.{
   type Asset, type Currency, type InstrumentType, type Isin, type MarketValue,
-  type Price, type PriceData, type Quantity, type Symbol, instrument_type_value,
+  type Price, type PriceData, type Quantity, type Symbol, instrument_type,
   isin_value, market_value, market_value_amount, price_amount, quantity_shares,
 }
 import domain/policy_types.{
-  type Policy, policy_sensitivity_cap_pp, policy_sensitivity_floor_pp,
-  policy_sensitivity_rel, policy_target_weights,
+  type Policy, InstrumentType, allocation_value, policy_sensitivity_cap_pp,
+  policy_sensitivity_floor_pp, policy_sensitivity_rel, policy_target_key_value,
+  policy_target_type, policy_target_weights,
 }
 import domain/position_types.{type Position}
 import gleam/dict
 import gleam/list
 import gleam/result
+
+// Domain: DriftStatus - indicates whether allocation is within allowed bands
+pub type DriftStatus {
+  InBand
+  OutOfBand
+}
+
+// Domain: DriftAnalysis - analysis for a single target key
+pub type DriftAnalysis {
+  DriftAnalysis(
+    target_key_type: policy_types.PolicyTargetType,
+    target_key: policy_types.PolicyTargetKey,
+    current_weight: Float,
+    target_weight: Float,
+    status: DriftStatus,
+    delta_to_edge: Float,
+    // percentage points from nearest boundary
+  )
+}
+
+// Domain: DriftReport - complete drift analysis for portfolio
+pub type DriftReport {
+  DriftReport(analyses: List(DriftAnalysis))
+}
 
 // Domain: Band - represents allowed drift range for an instrument type
 pub opaque type Band {
@@ -48,7 +73,7 @@ pub type PositionSnapshot {
 // Domain: AllocationSnapshot - complete portfolio snapshot for rebalancing analysis
 pub type AllocationSnapshot {
   AllocationSnapshot(
-    by_instrument_type: dict.Dict(String, Float),
+    by_instrument_type: dict.Dict(InstrumentType, Float),
     // instrument_type -> weight (0.0-1.0)
     total_value: Float,
     positions: List(PositionSnapshot),
@@ -175,18 +200,17 @@ fn calculate_total_value(snapshots: List(PositionSnapshot)) -> Float {
 fn calculate_allocations(
   snapshots: List(PositionSnapshot),
   total_value: Float,
-) -> dict.Dict(String, Float) {
+) -> dict.Dict(InstrumentType, Float) {
   // Group by instrument type and sum values
   let type_totals =
     list.fold(snapshots, dict.new(), fn(acc, snapshot) {
-      let type_str = instrument_type_value(snapshot.instrument_type)
-      let current_value = case dict.get(acc, type_str) {
+      let current_value = case dict.get(acc, snapshot.instrument_type) {
         Ok(v) -> v
         Error(_) -> 0.0
       }
       dict.insert(
         acc,
-        type_str,
+        snapshot.instrument_type,
         current_value +. market_value_amount(snapshot.market_value),
       )
     })
@@ -196,7 +220,6 @@ fn calculate_allocations(
     True ->
       dict.map_values(type_totals, fn(_type, value) { value /. total_value })
     False -> dict.new()
-    // Empty portfolio
   }
 }
 
@@ -241,5 +264,62 @@ fn clamp_width(raw_width: Float, floor_pp: Float, cap_pp: Float) -> Float {
         True -> cap_pp
         False -> raw_width
       }
+  }
+}
+
+// Detect drift by comparing current allocations against policy bands
+pub fn detect_drift(
+  snapshot: AllocationSnapshot,
+  policy: Policy,
+) -> Result(DriftReport, String) {
+  let targets = policy_target_weights(policy.targets)
+
+  let analyses =
+    dict.fold(targets, Ok([]), fn(acc, target_key, target_allocation) {
+      use analyses_list <- result.try(acc)
+
+      let key_value = policy_target_key_value(target_key)
+      let target_weight = allocation_value(target_allocation)
+
+      // Get current weight based on target type
+      let current_weight = case policy_target_type(policy.targets) {
+        InstrumentType -> {
+          let instrument_type = instrument_type(key_value)
+          case dict.get(snapshot.by_instrument_type, instrument_type) {
+            Ok(weight) -> weight
+            Error(_) -> 0.0
+          }
+        }
+      }
+
+      // Get band for this target key - propagate errors
+      use band <- result.try(get_band(policy, target_key))
+
+      let lower_bound = band_lower_bound(band)
+      let upper_bound = band_upper_bound(band)
+
+      // Determine status and delta
+      let #(status, delta_to_edge) = case current_weight {
+        w if w <. lower_bound -> #(OutOfBand, lower_bound -. w)
+        w if w >. upper_bound -> #(OutOfBand, w -. upper_bound)
+        _ -> #(InBand, 0.0)
+      }
+
+      let analysis =
+        DriftAnalysis(
+          target_key_type: policy_target_type(policy.targets),
+          target_key: target_key,
+          current_weight: current_weight,
+          target_weight: target_weight,
+          status: status,
+          delta_to_edge: delta_to_edge,
+        )
+
+      Ok([analysis, ..analyses_list])
+    })
+
+  case analyses {
+    Ok(analyses_list) -> Ok(DriftReport(analyses: list.reverse(analyses_list)))
+    Error(e) -> Error(e)
   }
 }
