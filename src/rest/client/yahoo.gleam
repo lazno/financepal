@@ -1,6 +1,6 @@
 import domain/common_types.{
-  type Currency, type Isin, type Price, type PriceData, PriceData, currency,
-  currency_name, price, price_amount,
+  type Currency, type InstrumentType, type Isin, type Price, currency,
+  currency_name, instrument_type, price, price_amount,
 }
 import gleam/dynamic/decode
 import gleam/http/request
@@ -13,15 +13,16 @@ import gleam/result
 import gleam/string
 import gleam/time/timestamp
 
-type YahooPriceInfo {
+pub type YahooPriceInfo {
   YahooPriceInfo(
     price: Price,
     currency: Currency,
+    instrument_type: InstrumentType,
     timestamp: timestamp.Timestamp,
   )
 }
 
-pub fn fetch_price_from_yahoo(isin: Isin) -> Result(PriceData, String) {
+pub fn fetch_quote_from_yahoo(isin: Isin) -> Result(YahooPriceInfo, String) {
   use symbol <- result.try(fetch_symbol_internal(isin))
   use price_info <- result.try(fetch_price_internal(symbol))
 
@@ -40,7 +41,12 @@ pub fn fetch_price_from_yahoo(isin: Isin) -> Result(PriceData, String) {
     }
   }
   |> result.map(fn(converted_price) {
-    PriceData(isin, converted_price, currency("EUR"), price_info.timestamp)
+    YahooPriceInfo(
+      converted_price,
+      currency("EUR"),
+      price_info.instrument_type,
+      price_info.timestamp,
+    )
   })
 }
 
@@ -162,11 +168,15 @@ fn price_data_decoder() -> decode.Decoder(Result(YahooPriceInfo, String)) {
       result.map_error(Ok(currency(s)), string.inspect)
     }),
   )
+  use i_type <- decode.field(
+    "instrumentType",
+    decode.map(decode.string, instrument_type),
+  )
 
   let paired = {
     use p <- result.try(price)
     use c <- result.try(currency)
-    Ok(YahooPriceInfo(p, c, timestamp.system_time()))
+    Ok(YahooPriceInfo(p, c, i_type, timestamp.system_time()))
   }
 
   decode.success(paired)

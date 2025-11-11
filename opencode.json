@@ -1,0 +1,39 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "moonshotai/kimi-k2-thinking",
+  "lsp": {
+    "gleam": {
+      "command": [
+        "gleam",
+        "lsp"
+      ],
+      "extensions": [
+        ".gleam"
+      ]
+    }
+  },
+  "mcp": {
+    "context7": {
+      "type": "remote",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-1b91e212-feaa-4c5e-ae5d-8147b68836eb"
+      }
+    },
+    "conport": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "--from",
+        "context-portal-mcp",
+        "conport-mcp",
+        "--mode",
+        "stdio",
+        "--workspace_id",
+        "/Users/norbertlazzeri/dev/priv/portfolio-tracker-spikes/gleam/financepal",
+        "--log-level",
+        "DEBUG"
+      ],
+    },
+  },
+}

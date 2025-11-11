@@ -1,5 +1,6 @@
 import domain/common_types.{
-  type Account, type Asset, type OrderReference, type Quantity, type RecordDate,
+  type Account, type AssetName, type Isin, type OrderReference, type Quantity,
+  type RecordDate, type Symbol,
 }
 
 // Domain: Transaction Type (ADT)
@@ -28,7 +29,9 @@ pub fn position_record_type_to_string(t: PositionRecordType) -> String {
 pub type PositionRecord {
   PositionRecord(
     date: RecordDate,
-    asset: Asset,
+    isin: Isin,
+    symbol: Symbol,
+    asset_name: AssetName,
     position_record_type: PositionRecordType,
     quantity: Quantity,
     account: Account,
@@ -38,5 +41,5 @@ pub type PositionRecord {
 
 // Domain: Position
 pub type Position {
-  Position(asset: Asset, quantity: Quantity)
+  Position(isin: Isin, quantity: Quantity)
 }

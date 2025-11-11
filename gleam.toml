@@ -10,7 +10,6 @@ sqlight = ">= 1.0.0 and < 2.0.0"
 gleam_erlang = ">= 1.3.0 and < 2.0.0"
 mist = ">= 5.0.0 and < 6.0.0"
 simplifile = ">= 2.3.0 and < 3.0.0"
-# migrant = { path = "/Users/norbertlazzeri/dev/priv/portfolio-tracker-spikes/migrant" }
 migrant = { git = "https://github.com/aosasona/migrant", ref = "v0.3.0" }
 gleam_httpc = ">= 5.0.0 and < 6.0.0"
 gleam_time = ">= 1.4.0 and < 2.0.0"

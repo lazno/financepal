@@ -56,7 +56,7 @@ pub fn asset_name_value(a: AssetName) -> String {
 
 // Domain: Asset 
 pub type Asset {
-  Asset(isin: Isin, symbol: Symbol, name: AssetName)
+  Asset(isin: Isin, symbol: Symbol, name: AssetName, instrument_type: InstrumentType)
 }
 
 // Domain: Quantity
@@ -88,6 +88,18 @@ pub fn subtract_quantities(
     True -> Error("Resulting quantity cannot be negative")
     False -> Ok(Quantity(result))
   }
+}
+
+pub opaque type InstrumentType {
+  InstrumentType(value: String)
+}
+
+pub fn instrument_type(value: String) -> InstrumentType {
+  InstrumentType(value)
+}
+
+pub fn instrument_type_value(instrument_type: InstrumentType) -> String {
+  instrument_type.value
 }
 
 // Domain: Currency

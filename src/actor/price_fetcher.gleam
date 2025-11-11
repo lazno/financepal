@@ -65,7 +65,11 @@ fn fetch_all_prices(
   rate_limit_delay_ms: Int,
 ) -> Result(List(common_types.PriceData), String) {
   let fetch_price = fn(asset: common_types.Asset) {
-    let res = yahoo.fetch_price_from_yahoo(asset.isin)
+    let res =
+      yahoo.fetch_quote_from_yahoo(asset.isin)
+      |> result.map(fn(y) {
+        common_types.PriceData(asset.isin, y.price, y.currency, y.timestamp)
+      })
     process.sleep(rate_limit_delay_ms)
     res
   }

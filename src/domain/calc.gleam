@@ -1,10 +1,7 @@
 import domain/common_types
-import gleam/dict
-
-// import gleam/dict.{type Dict}
+import gleam/dict.{type Dict}
 import domain/position_types
 import gleam/list
-import gleam/result
 
 //
 // pub fn calculate_portfolio_value(
@@ -111,46 +108,33 @@ import gleam/result
 
 pub fn calculate_positions(
   records: List(position_types.PositionRecord),
-) -> Result(List(position_types.Position), String) {
+) -> Result(Dict(common_types.Isin, common_types.Quantity), String) {
   records
-  |> list.group(fn(r) { r.asset })
-  |> dict.map_values(fn(id, grouped) { calculate_position(id, grouped) })
-  |> dict.values()
-  |> result.all
+  |> list.group(fn(r) { r.isin })
+  |> dict.map_values(fn(_isin, grouped) { calculate_position_quantity(grouped) })
+  |> Ok
 }
 
 //
-fn calculate_position(
-  asset: common_types.Asset,
+fn calculate_position_quantity(
   records: List(position_types.PositionRecord),
-) -> Result(position_types.Position, String) {
+) -> common_types.Quantity {
   let buys =
     list.filter(records, fn(r) { r.position_record_type == position_types.Buy })
   let sells =
     list.filter(records, fn(r) { r.position_record_type == position_types.Sell })
 
-  case buys {
-    [] ->
-      Error(
-        "No buy transactions for symbol: "
-        <> common_types.symbol_ticker(asset.symbol),
-      )
-    _ -> {
-      let total_buy_quantity = calculate_total_quantity(buys)
-      let total_sell_quantity = calculate_total_quantity(sells)
+  let total_buy_quantity = calculate_total_quantity(buys)
+  let total_sell_quantity = calculate_total_quantity(sells)
 
-      use current_quantity <- result.try(
-        common_types.subtract_quantities(
-          total_buy_quantity,
-          total_sell_quantity,
-        )
-        |> result.map_error(fn(_) {
-          "Negative quantity for symbol: "
-          <> common_types.symbol_ticker(asset.symbol)
-        }),
-      )
-
-      Ok(position_types.Position(asset, current_quantity))
+  case common_types.subtract_quantities(total_buy_quantity, total_sell_quantity) {
+    Ok(quantity) -> quantity
+    Error(_) -> {
+      // Return zero quantity if result would be negative
+      case common_types.quantity(0.0) {
+        Ok(q) -> q
+        Error(_) -> panic as "Zero quantity should always be valid"
+      }
     }
   }
 }

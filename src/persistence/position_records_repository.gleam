@@ -1,5 +1,5 @@
 import domain/common_types.{
-  type OrderReference, Asset, account, account_name, asset_name,
+  type OrderReference, account, account_name, asset_name,
   asset_name_value, isin, isin_value, order_reference, order_reference_value,
   quantity, quantity_shares, record_date, record_date_value, symbol as symbol_fn,
   symbol_ticker,
@@ -65,9 +65,9 @@ fn insert_position_records_loop(
 
       let id = uuid.v7_string()
       let date = record_date_value(record.date)
-      let symbol = symbol_ticker(record.asset.symbol)
-      let isin = isin_value(record.asset.isin)
-      let asset_name = asset_name_value(record.asset.name)
+      let symbol = symbol_ticker(record.symbol)
+      let isin = isin_value(record.isin)
+      let asset_name = asset_name_value(record.asset_name)
 
       let record_type =
         position_record_type_to_string(record.position_record_type)
@@ -137,7 +137,7 @@ fn record_decoder() -> decode.Decoder(PositionRecord) {
   let isin = isin(isin_str)
   let asset_name = asset_name(asset_name_str)
   let account = account(account_str)
-  let order_ref = order_reference(order_ref_str)
+  let order_reference = order_reference(order_ref_str)
 
   // Parse record type - default to Buy if invalid
   let position_record_type = case position_record_type_from_string(type_str) {
@@ -157,10 +157,12 @@ fn record_decoder() -> decode.Decoder(PositionRecord) {
 
   decode.success(PositionRecord(
     date: date,
-    asset: Asset(isin, symbol, asset_name),
+    isin: isin,
+    symbol: symbol,
+    asset_name: asset_name,
     position_record_type: position_record_type,
     quantity: quantity,
     account: account,
-    order_reference: order_ref,
+    order_reference: order_reference,
   ))
 }

@@ -12,8 +12,7 @@ import gleam/string
 import gsv
 
 import domain/common_types.{
-  Asset, account, asset_name, isin, order_reference, quantity, record_date,
-  symbol,
+  account, asset_name, isin, order_reference, quantity, record_date, symbol,
 }
 
 fn ensure_not_empty(
@@ -83,11 +82,9 @@ pub fn directa_sim_to_rebalancing(
 
     Ok(position_types.PositionRecord(
       date: record_date(row.transaction_date),
-      asset: Asset(
-        symbol: symbol(row.ticker),
-        isin: isin(row.isin),
-        name: asset_name(row.description),
-      ),
+      isin: isin(row.isin),
+      symbol: symbol(row.ticker),
+      asset_name: asset_name(row.description),
       account: account(account_name),
       quantity: q,
       position_record_type: tx_type,
