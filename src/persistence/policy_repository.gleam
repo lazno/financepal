@@ -1,10 +1,11 @@
 import domain/policy_types.{
-  type MinTradeValue, type Policy, type PolicyId, type PolicyName,
-  type PolicySensitivity, type PolicyTarget, type TurnoverCap, Policy,
-  min_trade_value, min_trade_value_amount, policy_id, policy_id_value,
-  policy_name, policy_name_value, policy_sensitivity, policy_sensitivity_cap_pp,
-  policy_sensitivity_floor_pp, policy_sensitivity_rel, policy_target,
-  policy_target_weights, turnover_cap, turnover_cap_percentage,
+  type Allocation, type MinTradeValue, type Policy, type PolicyId, type PolicyName,
+  type PolicySensitivity, type PolicyTarget, type PolicyTargetKey, type TurnoverCap,
+  Policy, allocation, allocation_value, min_trade_value, min_trade_value_amount,
+  policy_id, policy_id_value, policy_name, policy_name_value, policy_sensitivity,
+  policy_sensitivity_cap_pp, policy_sensitivity_floor_pp, policy_sensitivity_rel,
+  policy_target, policy_target_key, policy_target_key_value, policy_target_weights,
+  turnover_cap, turnover_cap_percentage,
 }
 import gleam/dict
 import gleam/dynamic/decode
@@ -31,7 +32,7 @@ pub fn insert_policy(
     "INSERT INTO policy (id, name, targets, sensitivity, min_trade_value, turnover_cap) 
      VALUES (?, ?, ?, ?, ?, ?)"
 
-  let targets_json = targets |> policy_target_weights |> dict_to_json
+  let targets_json = targets |> policy_target_weights |> target_dict_to_json
   let sensitivity_json = sensitivity_to_json(sensitivity)
 
   use _ <- result.try(
@@ -83,12 +84,12 @@ pub fn delete_policy(
 
 // Helper functions
 
-fn dict_to_json(dict: dict.Dict(String, Float)) -> String {
+fn target_dict_to_json(dict: dict.Dict(PolicyTargetKey, Allocation)) -> String {
   dict
   |> dict.to_list
   |> list.map(fn(pair) {
-    let #(key, value) = pair
-    "\"" <> key <> "\":" <> float.to_string(value)
+    let #(key, allocation) = pair
+    "\"" <> policy_target_key_value(key) <> "\":" <> float.to_string(allocation_value(allocation))
   })
   |> string.join(",")
   |> fn(content) { "{" <> content <> "}" }
@@ -127,9 +128,13 @@ fn decode_policy() -> decode.Decoder(Policy) {
   }
 
   // Validate targets - panic on failure
-  let policy_target = case policy_target(targets_dict) {
-    Ok(t) -> t
-    Error(_) -> panic as "FATAL: Invalid policy targets"
+  let policy_target = case convert_targets_dict(targets_dict) {
+    Ok(converted_dict) -> 
+      case policy_target(policy_types.InstrumentType, converted_dict) {
+        Ok(t) -> t
+        Error(_) -> panic as "FATAL: Invalid policy targets"
+      }
+    Error(_) -> panic as "FATAL: Failed to convert targets dict"
   }
 
   // Parse sensitivity JSON - panic on failure
@@ -204,4 +209,19 @@ fn json_to_dict(json: String) -> Result(dict.Dict(String, Float), Nil) {
       Error(Nil)
     }
   }
+}
+
+fn convert_targets_dict(
+  dict: dict.Dict(String, Float),
+) -> Result(dict.Dict(PolicyTargetKey, Allocation), Nil) {
+  dict
+  |> dict.to_list
+  |> list.try_map(fn(pair) {
+    let #(key, value) = pair
+    case allocation(value) {
+      Ok(alloc) -> Ok(#(policy_target_key(key), alloc))
+      Error(_) -> Error(Nil)
+    }
+  })
+  |> result.map(dict.from_list)
 }

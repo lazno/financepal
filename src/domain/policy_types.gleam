@@ -27,24 +27,64 @@ pub fn policy_name_value(name: PolicyName) -> String {
   name.value
 }
 
+pub opaque type PolicyTargetKey {
+  PolicyTargetKey(value: String)
+}
+
+pub fn policy_target_key(value: String) -> PolicyTargetKey {
+  PolicyTargetKey(value)
+}
+
+pub fn policy_target_key_value(key: PolicyTargetKey) -> String {
+  key.value
+}
+
+pub opaque type Allocation {
+  Allocation(value: Float)
+}
+
+pub fn allocation(value: Float) -> Result(Allocation, String) {
+  case value >=. 0.0, value <=. 1.0 {
+    True, True -> Ok(Allocation(value))
+    _, _ -> Error("Allocation must be betwen 0 and 1")
+  }
+}
+
+pub fn allocation_value(allocation: Allocation) -> Float {
+  allocation.value
+}
+
+pub type PolicyTargetType {
+  InstrumentType
+}
+
 // Domain: PolicyTarget
 pub opaque type PolicyTarget {
-  PolicyTarget(weights: dict.Dict(String, Float))
+  PolicyTarget(
+    target_type: PolicyTargetType,
+    weights: dict.Dict(PolicyTargetKey, Allocation),
+  )
 }
 
 pub fn policy_target(
-  weights: dict.Dict(String, Float),
+  target_type: PolicyTargetType,
+  weights: dict.Dict(PolicyTargetKey, Allocation),
 ) -> Result(PolicyTarget, String) {
-  let total = dict.fold(weights, 0.0, fn(acc, _key, value) { acc +. value })
+  let total =
+    dict.fold(weights, 0.0, fn(acc, _key, value) {
+      acc +. allocation_value(value)
+    })
 
   case float.absolute_value(total -. 1.0) <. 0.001 {
-    True -> Ok(PolicyTarget(weights))
+    True -> Ok(PolicyTarget(target_type, weights))
     False ->
       Error("Policy targets must sum to 1.0, got: " <> float.to_string(total))
   }
 }
 
-pub fn policy_target_weights(target: PolicyTarget) -> dict.Dict(String, Float) {
+pub fn policy_target_weights(
+  target: PolicyTarget,
+) -> dict.Dict(PolicyTargetKey, Allocation) {
   target.weights
 }
 

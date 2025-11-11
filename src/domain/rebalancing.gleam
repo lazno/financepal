@@ -3,9 +3,34 @@ import domain/common_types.{
   type Price, type PriceData, type Quantity, type Symbol, instrument_type_value,
   isin_value, market_value, market_value_amount, price_amount, quantity_shares,
 }
+import domain/policy_types.{
+  type Policy, policy_sensitivity_cap_pp, policy_sensitivity_floor_pp,
+  policy_sensitivity_rel, policy_target_weights,
+}
 import domain/position_types.{type Position}
 import gleam/dict
 import gleam/list
+import gleam/result
+
+// Domain: Band - represents allowed drift range for an instrument type
+pub opaque type Band {
+  Band(lower_bound: Float, upper_bound: Float)
+}
+
+pub fn band(lower_bound: Float, upper_bound: Float) -> Result(Band, String) {
+  case lower_bound >. upper_bound {
+    True -> Error("Lower bound cannot exceed upper bound")
+    False -> Ok(Band(lower_bound, upper_bound))
+  }
+}
+
+pub fn band_lower_bound(band: Band) -> Float {
+  band.lower_bound
+}
+
+pub fn band_upper_bound(band: Band) -> Float {
+  band.upper_bound
+}
 
 // Domain: PositionSnapshot - represents a single position with current market data
 pub type PositionSnapshot {
@@ -172,5 +197,49 @@ fn calculate_allocations(
       dict.map_values(type_totals, fn(_type, value) { value /. total_value })
     False -> dict.new()
     // Empty portfolio
+  }
+}
+
+pub fn get_band(
+  policy: Policy,
+  key: policy_types.PolicyTargetKey,
+) -> Result(Band, String) {
+  use target_allocation <- result.try(
+    dict.get(policy_target_weights(policy.targets), key)
+    |> result.map_error(fn(_) {
+      "Could not find a policytarget for key "
+      <> policy_types.policy_target_key_value(key)
+    }),
+  )
+  let rel = policy_sensitivity_rel(policy.sensitivity)
+  let floor_pp = policy_sensitivity_floor_pp(policy.sensitivity)
+  let cap_pp = policy_sensitivity_cap_pp(policy.sensitivity)
+
+  let allocation_value = policy_types.allocation_value(target_allocation)
+  let band = {
+    let raw_width = allocation_value *. rel
+    let width = clamp_width(raw_width, floor_pp, cap_pp)
+    let lower_bound = allocation_value -. width
+    let upper_bound = allocation_value +. width
+
+    case band(lower_bound, upper_bound) {
+      Ok(band) -> band
+      Error(_) -> Band(0.0, 1.0)
+      // Fallback to full range on error
+    }
+  }
+
+  Ok(band)
+}
+
+// Helper function to clamp width between floor and cap
+fn clamp_width(raw_width: Float, floor_pp: Float, cap_pp: Float) -> Float {
+  case raw_width <. floor_pp {
+    True -> floor_pp
+    False ->
+      case raw_width >. cap_pp {
+        True -> cap_pp
+        False -> raw_width
+      }
   }
 }
