@@ -1,4 +1,3 @@
-import domain/calc
 import domain/common_types
 import domain/position_types
 import gleam/dict
@@ -40,7 +39,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
               position_records_repository.get_all_position_records(state.db),
             )
             use isin_to_quantities <- result.try(
-              calc.calculate_positions(records)
+              position_types.calculate_positions(records)
               |> result.map_error(fn(e) { db_utils.UserError(e) }),
             )
 
