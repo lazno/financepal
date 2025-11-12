@@ -10,7 +10,7 @@ import domain/policy_types.{
 import domain/position_types.{Position}
 import domain/rebalancing.{InBand, OutOfBand, build_snapshot, detect_drift}
 import gleam/dict
-import gleam/float
+import gleam/int
 import gleam/list
 import gleam/time/timestamp
 import gleeunit/should
@@ -78,9 +78,9 @@ pub fn no_drift_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Setup policy: 60% equity, 30% bonds, 10% cash
-  let assert Ok(equity_alloc) = allocation(0.6)
-  let assert Ok(bond_alloc) = allocation(0.3)
-  let assert Ok(cash_alloc) = allocation(0.1)
+  let assert Ok(equity_alloc) = allocation(6000)
+  let assert Ok(bond_alloc) = allocation(3000)
+  let assert Ok(cash_alloc) = allocation(1000)
 
   let targets =
     dict.from_list([
@@ -90,9 +90,9 @@ pub fn no_drift_test() {
     ])
 
   let assert Ok(target) = policy_target(policy_types.InstrumentType, targets)
-  let assert Ok(sensitivity) = policy_sensitivity(0.2, 0.02, 0.08)
+  let assert Ok(sensitivity) = policy_sensitivity(2000, 200, 800)
   let assert Ok(min_trade) = min_trade_value(100.0)
-  let assert Ok(turnover) = turnover_cap(0.1)
+  let assert Ok(turnover) = turnover_cap(10_000)
 
   let policy =
     Policy(
@@ -111,8 +111,8 @@ pub fn no_drift_test() {
   should.equal(list.length(drift_report.analyses), 3)
 
   list.each(drift_report.analyses, fn(analysis) {
+    should.equal(analysis.delta_to_edge_bps, 0)
     should.equal(analysis.status, InBand)
-    should.equal(analysis.delta_to_edge, 0.0)
   })
 }
 
@@ -164,8 +164,8 @@ pub fn equity_overweight_drift_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Setup policy: 60% equity, 40% bonds
-  let assert Ok(equity_alloc) = allocation(0.6)
-  let assert Ok(bond_alloc) = allocation(0.4)
+  let assert Ok(equity_alloc) = allocation(6000)
+  let assert Ok(bond_alloc) = allocation(4000)
 
   let targets =
     dict.from_list([
@@ -174,9 +174,9 @@ pub fn equity_overweight_drift_test() {
     ])
 
   let assert Ok(target) = policy_target(policy_types.InstrumentType, targets)
-  let assert Ok(sensitivity) = policy_sensitivity(0.2, 0.02, 0.08)
+  let assert Ok(sensitivity) = policy_sensitivity(2000, 200, 800)
   let assert Ok(min_trade) = min_trade_value(100.0)
-  let assert Ok(turnover) = turnover_cap(0.1)
+  let assert Ok(turnover) = turnover_cap(1000)
 
   let policy =
     Policy(
@@ -199,7 +199,7 @@ pub fn equity_overweight_drift_test() {
   let assert Ok(equity) = equity_analysis
 
   should.equal(equity.status, OutOfBand)
-  should.be_true(float.absolute_value(equity.delta_to_edge -. 0.02) <. 0.001)
+  should.be_true(int.absolute_value(equity.delta_to_edge_bps - 200) == 0)
 
   // Verify: Bonds should also be OutOfBand (30% < 32% band lower bound)
   let bond_analysis =
@@ -210,7 +210,7 @@ pub fn equity_overweight_drift_test() {
 
   should.equal(bond.status, OutOfBand)
   // Delta: 32% band lower bound - 30% current = 2pp
-  should.be_true(float.absolute_value(bond.delta_to_edge -. 0.02) <. 0.001)
+  should.be_true(int.absolute_value(bond.delta_to_edge_bps - 200) == 0)
 }
 
 // Test 3: Mixed scenario (some in band, some out of band)
@@ -276,9 +276,9 @@ pub fn mixed_drift_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Setup policy: 60% equity, 30% bonds, 10% cash
-  let assert Ok(equity_alloc) = allocation(0.6)
-  let assert Ok(bond_alloc) = allocation(0.3)
-  let assert Ok(cash_alloc) = allocation(0.1)
+  let assert Ok(equity_alloc) = allocation(6000)
+  let assert Ok(bond_alloc) = allocation(3000)
+  let assert Ok(cash_alloc) = allocation(1000)
 
   let targets =
     dict.from_list([
@@ -288,9 +288,9 @@ pub fn mixed_drift_test() {
     ])
 
   let assert Ok(target) = policy_target(policy_types.InstrumentType, targets)
-  let assert Ok(sensitivity) = policy_sensitivity(0.2, 0.02, 0.08)
+  let assert Ok(sensitivity) = policy_sensitivity(2000, 200, 800)
   let assert Ok(min_trade) = min_trade_value(100.0)
-  let assert Ok(turnover) = turnover_cap(0.1)
+  let assert Ok(turnover) = turnover_cap(1000)
 
   let policy =
     Policy(
@@ -314,7 +314,7 @@ pub fn mixed_drift_test() {
 
   should.equal(equity.status, OutOfBand)
   // Delta: 52% band lower bound - 50% current = 2pp
-  should.be_true(float.absolute_value(equity.delta_to_edge -. 0.02) <. 0.001)
+  should.be_true(int.absolute_value(equity.delta_to_edge_bps - 200) == 0)
 
   // Verify: Bonds should be OutOfBand (overweight)
   let bond_analysis =
@@ -325,7 +325,7 @@ pub fn mixed_drift_test() {
 
   should.equal(bond.status, OutOfBand)
   // Delta: 40% current - 36% band upper bound = 4pp
-  should.be_true(float.absolute_value(bond.delta_to_edge -. 0.04) <. 0.001)
+  should.be_true(int.absolute_value(bond.delta_to_edge_bps - 400) == 0)
 
   // Verify: Cash should be InBand (at target)
   let cash_analysis =
@@ -335,5 +335,5 @@ pub fn mixed_drift_test() {
   let assert Ok(cash) = cash_analysis
 
   should.equal(cash.status, InBand)
-  should.equal(cash.delta_to_edge, 0.0)
+  should.equal(cash.delta_to_edge_bps, 0)
 }

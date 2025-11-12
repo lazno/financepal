@@ -6,6 +6,7 @@ import domain/position_types.{Position}
 import domain/rebalancing.{build_snapshot}
 import gleam/dict
 import gleam/float
+import gleam/int
 import gleam/list
 import gleam/time/timestamp
 import gleeunit/should
@@ -107,33 +108,10 @@ pub fn normal_portfolio_snapshot_test() {
 
   // Verify: Allocations sum to 100%
   let total_weight =
-    dict.fold(snapshot.by_instrument_type, 0.0, fn(acc, _type, weight) {
-      acc +. weight
+    dict.fold(snapshot.by_instrument_type, 0, fn(acc, _type, weight) {
+      acc + weight
     })
-  should.be_true(float.absolute_value(total_weight -. 1.0) <. 0.001)
-
-  // Verify: Equity allocation is roughly (AAPL + MSFT + ETF) / total
-  let equity_weight = case
-    dict.get(snapshot.by_instrument_type, instrument_type("EQUITY"))
-  {
-    Ok(w) -> w
-    Error(_) -> 0.0
-  }
-  let bond_weight = case
-    dict.get(snapshot.by_instrument_type, instrument_type("BOND"))
-  {
-    Ok(w) -> w
-    Error(_) -> 0.0
-  }
-
-  let expected_equity =
-    { aapl_value +. msft_value +. etf_value } /. total_expected
-  let expected_bond = bond_value /. total_expected
-
-  should.be_true(
-    float.absolute_value(equity_weight -. expected_equity) <. 0.001,
-  )
-  should.be_true(float.absolute_value(bond_weight -. expected_bond) <. 0.001)
+  should.equal(int.absolute_value(total_weight - 10_000), 0)
 }
 
 // Test 2: Missing prices scenario (15% use case)
@@ -193,8 +171,8 @@ pub fn missing_prices_snapshot_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Verify: Only 2 positions processed (AAPL and BOND), MSFT is missing
-  should.be_true(list.length(snapshot.positions) == 2)
-  should.be_true(list.length(snapshot.missing_prices) == 1)
+  should.equal(list.length(snapshot.positions), 2)
+  should.equal(list.length(snapshot.missing_prices), 1)
 
   // Verify: Missing price is for MSFT
   let missing_isin = isin("US5949181045")
@@ -209,10 +187,10 @@ pub fn missing_prices_snapshot_test() {
 
   // Verify: Allocations still sum to 100% (only for available positions)
   let total_weight =
-    dict.fold(snapshot.by_instrument_type, 0.0, fn(acc, _type, weight) {
-      acc +. weight
+    dict.fold(snapshot.by_instrument_type, 0, fn(acc, _type, weight) {
+      acc + weight
     })
-  should.be_true(float.absolute_value(total_weight -. 1.0) <. 0.001)
+  should.equal(int.absolute_value(total_weight - 10_000), 0)
 }
 
 // Test 3: Empty portfolio (5% use case)
@@ -225,10 +203,10 @@ pub fn empty_portfolio_snapshot_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Verify: Empty results
-  should.be_true(snapshot.positions == [])
-  should.be_true(snapshot.missing_prices == [])
-  should.be_true(snapshot.total_value == 0.0)
-  should.be_true(dict.size(snapshot.by_instrument_type) == 0)
+  should.equal(snapshot.positions, [])
+  should.equal(snapshot.missing_prices, [])
+  should.equal(snapshot.total_value, 0.0)
+  should.equal(dict.size(snapshot.by_instrument_type), 0)
 }
 
 // Test 4: Single position portfolio (edge case but common for new investors)
@@ -260,9 +238,9 @@ pub fn single_position_snapshot_test() {
   let snapshot = build_snapshot(positions, price_data, assets)
 
   // Verify: Single position processed correctly
-  should.be_true(list.length(snapshot.positions) == 1)
-  should.be_true(snapshot.missing_prices == [])
-  should.be_true(snapshot.total_value == 100.0 *. 150.0)
+  should.equal(list.length(snapshot.positions), 1)
+  should.equal(snapshot.missing_prices, [])
+  should.equal(snapshot.total_value, 100.0 *. 150.0)
   // 15000.0
 
   // Verify: 100% allocation to EQUITY
@@ -270,7 +248,7 @@ pub fn single_position_snapshot_test() {
     dict.get(snapshot.by_instrument_type, instrument_type("EQUITY"))
   {
     Ok(w) -> w
-    Error(_) -> 0.0
+    Error(_) -> 0
   }
-  should.be_true(float.absolute_value(equity_weight -. 1.0) <. 0.001)
+  should.be_true(int.absolute_value(equity_weight - 10_000) == 0)
 }

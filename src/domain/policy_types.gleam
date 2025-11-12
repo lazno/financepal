@@ -1,5 +1,6 @@
 import gleam/dict
 import gleam/float
+import gleam/int
 
 // Domain: PolicyId
 pub opaque type PolicyId {
@@ -40,22 +41,31 @@ pub fn policy_target_key_value(key: PolicyTargetKey) -> String {
 }
 
 pub opaque type Allocation {
-  Allocation(value: Float)
+  Allocation(bps: Int)
 }
 
-pub fn allocation(value: Float) -> Result(Allocation, String) {
-  case value >=. 0.0, value <=. 1.0 {
-    True, True -> Ok(Allocation(value))
+pub fn allocation(bps: Int) -> Result(Allocation, String) {
+  case bps >= 0, bps <= 10_000 {
+    True, True -> Ok(Allocation(bps))
     _, _ -> Error("Allocation must be betwen 0 and 1")
   }
 }
 
-pub fn allocation_value(allocation: Allocation) -> Float {
-  allocation.value
+pub fn allocation_bps(allocation: Allocation) -> Int {
+  allocation.bps
 }
 
 pub type PolicyTargetType {
   InstrumentType
+}
+
+pub fn policy_target_type_from_string(
+  s: String,
+) -> Result(PolicyTargetType, String) {
+  case s {
+    "InstrumentType" -> Ok(InstrumentType)
+    _ -> Error("unkown PolicyTargetType: ")
+  }
 }
 
 // Domain: PolicyTarget
@@ -71,14 +81,12 @@ pub fn policy_target(
   weights: dict.Dict(PolicyTargetKey, Allocation),
 ) -> Result(PolicyTarget, String) {
   let total =
-    dict.fold(weights, 0.0, fn(acc, _key, value) {
-      acc +. allocation_value(value)
-    })
+    dict.fold(weights, 0, fn(acc, _key, value) { acc + allocation_bps(value) })
 
-  case float.absolute_value(total -. 1.0) <. 0.001 {
+  case total == 10_000 {
     True -> Ok(PolicyTarget(target_type, weights))
     False ->
-      Error("Policy targets must sum to 1.0, got: " <> float.to_string(total))
+      Error("Policy targets must sum to 10000, got: " <> int.to_string(total))
   }
 }
 
@@ -94,55 +102,56 @@ pub fn policy_target_type(target: PolicyTarget) -> PolicyTargetType {
 
 // Domain: PolicySensitivity
 pub opaque type PolicySensitivity {
-  PolicySensitivity(rel: Float, floor_pp: Float, cap_pp: Float)
+  PolicySensitivity(rel_bps: Int, floor_bps: Int, cap_bps: Int)
 }
 
 pub fn policy_sensitivity(
-  rel: Float,
-  floor_pp: Float,
-  cap_pp: Float,
+  rel_bps: Int,
+  floor_bps: Int,
+  cap_bps: Int,
 ) -> Result(PolicySensitivity, String) {
-  case rel <. 0.0, floor_pp <. 0.0, cap_pp <. 0.0, floor_pp >. cap_pp {
+  case rel_bps < 0, floor_bps < 0, cap_bps < 0, floor_bps > cap_bps {
     True, _, _, _ ->
-      Error("Relative sensitivity cannot be negative: " <> float.to_string(rel))
+      Error(
+        "Relative sensitivity cannot be negative: " <> int.to_string(rel_bps),
+      )
     _, True, _, _ ->
-      Error("Floor cannot be negative: " <> float.to_string(floor_pp))
-    _, _, True, _ ->
-      Error("Cap cannot be negative: " <> float.to_string(cap_pp))
+      Error("Floor cannot be negative: " <> int.to_string(floor_bps))
+    _, _, True, _ -> Error("Cap cannot be negative: " <> int.to_string(cap_bps))
     _, _, _, True ->
       Error(
         "Floor cannot exceed cap: "
-        <> float.to_string(floor_pp)
+        <> int.to_string(floor_bps)
         <> " > "
-        <> float.to_string(cap_pp),
+        <> int.to_string(cap_bps),
       )
     False, False, False, False -> {
       // Ensure reasonable bounds
-      case rel >. 1.0, floor_pp >. 0.5, cap_pp >. 0.5 {
+      case rel_bps > 10_000, floor_bps > 5000, cap_bps > 50_000 {
         True, _, _ ->
           Error(
-            "Relative sensitivity too high (> 100%): " <> float.to_string(rel),
+            "Relative sensitivity too high (> 100%): " <> int.to_string(rel_bps),
           )
         _, True, _ ->
-          Error("Floor too high (> 50pp): " <> float.to_string(floor_pp))
-        _, _, True ->
-          Error("Cap too high (> 50pp): " <> float.to_string(cap_pp))
-        False, False, False -> Ok(PolicySensitivity(rel, floor_pp, cap_pp))
+          Error("Floor too high (> 50pp): " <> int.to_string(floor_bps))
+        _, _, True -> Error("Cap too high (> 50pp): " <> int.to_string(cap_bps))
+        False, False, False ->
+          Ok(PolicySensitivity(rel_bps, floor_bps, cap_bps))
       }
     }
   }
 }
 
-pub fn policy_sensitivity_rel(sensitivity: PolicySensitivity) -> Float {
-  sensitivity.rel
+pub fn policy_sensitivity_rel_bps(sensitivity: PolicySensitivity) -> Int {
+  sensitivity.rel_bps
 }
 
-pub fn policy_sensitivity_floor_pp(sensitivity: PolicySensitivity) -> Float {
-  sensitivity.floor_pp
+pub fn policy_sensitivity_floor_bps(sensitivity: PolicySensitivity) -> Int {
+  sensitivity.floor_bps
 }
 
-pub fn policy_sensitivity_cap_pp(sensitivity: PolicySensitivity) -> Float {
-  sensitivity.cap_pp
+pub fn policy_sensitivity_cap_bps(sensitivity: PolicySensitivity) -> Int {
+  sensitivity.cap_bps
 }
 
 // Domain: MinTradeValue
@@ -164,21 +173,19 @@ pub fn min_trade_value_amount(value: MinTradeValue) -> Float {
 
 // Domain: TurnoverCap
 pub opaque type TurnoverCap {
-  TurnoverCap(percentage: Float)
+  TurnoverCap(bps: Int)
 }
 
-pub fn turnover_cap(percentage: Float) -> Result(TurnoverCap, String) {
-  case percentage <. 0.0, percentage >. 1.0 {
-    True, _ ->
-      Error("Turnover cap cannot be negative: " <> float.to_string(percentage))
-    _, True ->
-      Error("Turnover cap cannot exceed 1.0: " <> float.to_string(percentage))
-    False, False -> Ok(TurnoverCap(percentage))
+pub fn turnover_cap(bps: Int) -> Result(TurnoverCap, String) {
+  case bps < 0, bps > 10_000 {
+    True, _ -> Error("Turnover cap cannot be negative: " <> int.to_string(bps))
+    _, True -> Error("Turnover cap cannot exceed 1.0: " <> int.to_string(bps))
+    False, False -> Ok(TurnoverCap(bps))
   }
 }
 
-pub fn turnover_cap_percentage(cap: TurnoverCap) -> Float {
-  cap.percentage
+pub fn turnover_cap_bps(cap: TurnoverCap) -> Int {
+  cap.bps
 }
 
 // Domain: Policy

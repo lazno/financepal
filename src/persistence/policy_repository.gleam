@@ -1,16 +1,16 @@
 import domain/policy_types.{
-  type Allocation, type MinTradeValue, type Policy, type PolicyId,
-  type PolicyName, type PolicySensitivity, type PolicyTarget,
-  type PolicyTargetKey, type TurnoverCap, Policy, allocation, allocation_value,
-  min_trade_value, min_trade_value_amount, policy_id, policy_id_value,
-  policy_name, policy_name_value, policy_sensitivity, policy_sensitivity_cap_pp,
-  policy_sensitivity_floor_pp, policy_sensitivity_rel, policy_target,
-  policy_target_key, policy_target_key_value, policy_target_weights,
-  turnover_cap, turnover_cap_percentage,
+  type Policy, type PolicyId, type PolicySensitivity, type PolicyTarget, Policy,
+  allocation, allocation_bps, min_trade_value, min_trade_value_amount, policy_id,
+  policy_id_value, policy_name, policy_name_value, policy_sensitivity,
+  policy_sensitivity_cap_bps, policy_sensitivity_floor_bps,
+  policy_sensitivity_rel_bps, policy_target, policy_target_key,
+  policy_target_key_value, policy_target_weights, turnover_cap, turnover_cap_bps,
 }
 import gleam/dict
 import gleam/dynamic/decode
 import gleam/float
+import gleam/int
+import gleam/json
 import gleam/list
 import gleam/result
 import gleam/string
@@ -20,11 +20,7 @@ import youid/uuid
 
 pub fn insert_policy(
   conn: sqlight.Connection,
-  name: PolicyName,
-  targets: PolicyTarget,
-  sensitivity: PolicySensitivity,
-  min_trade_value: MinTradeValue,
-  turnover_cap: TurnoverCap,
+  policy: Policy,
 ) -> Result(PolicyId, TransactionError(e)) {
   let id = uuid.v7() |> uuid.to_string
   let policy_id = policy_id(id)
@@ -33,8 +29,8 @@ pub fn insert_policy(
     "INSERT INTO policy (id, name, targets, sensitivity, min_trade_value, turnover_cap) 
      VALUES (?, ?, ?, ?, ?, ?)"
 
-  let targets_json = targets |> policy_target_weights |> target_dict_to_json
-  let sensitivity_json = sensitivity_to_json(sensitivity)
+  let targets_json = target_to_json(policy.targets)
+  let sensitivity_json = sensitivity_to_json(policy.sensitivity)
 
   use _ <- result.try(
     sqlight.query(
@@ -42,11 +38,13 @@ pub fn insert_policy(
       conn,
       [
         sqlight.text(policy_id_value(policy_id)),
-        sqlight.text(policy_name_value(name)),
+        sqlight.text(policy_name_value(policy.name)),
         sqlight.text(targets_json),
         sqlight.text(sensitivity_json),
-        sqlight.text(float.to_string(min_trade_value_amount(min_trade_value))),
-        sqlight.text(float.to_string(turnover_cap_percentage(turnover_cap))),
+        sqlight.text(
+          float.to_string(min_trade_value_amount(policy.min_trade_value)),
+        ),
+        sqlight.text(int.to_string(turnover_cap_bps(policy.turnover_cap))),
       ],
       decode.success(Nil),
     )
@@ -85,32 +83,39 @@ pub fn delete_policy(
 
 // Helper functions
 
-fn target_dict_to_json(dict: dict.Dict(PolicyTargetKey, Allocation)) -> String {
-  dict
-  |> dict.to_list
-  |> list.map(fn(pair) {
-    let #(key, allocation) = pair
-    "\""
-    <> policy_target_key_value(key)
-    <> "\":"
-    <> float.to_string(allocation_value(allocation))
-  })
-  |> string.join(",")
-  |> fn(content) { "{" <> content <> "}" }
+pub fn target_to_json(target: PolicyTarget) -> String {
+  let target_type = #(
+    "target_type",
+    json.string(case policy_types.policy_target_type(target) {
+      policy_types.InstrumentType -> "InstrumentType"
+    }),
+  )
+  let weight_list = #(
+    "weights",
+    policy_target_weights(target)
+      |> dict.to_list
+      |> list.map(fn(pair) {
+        let #(key, value) = pair
+        #(policy_target_key_value(key), json.int(allocation_bps(value)))
+      })
+      |> json.object,
+  )
+
+  json.object([target_type, weight_list])
+  |> json.to_string
 }
 
 fn sensitivity_to_json(sensitivity: PolicySensitivity) -> String {
-  let rel = policy_sensitivity_rel(sensitivity)
-  let floor = policy_sensitivity_floor_pp(sensitivity)
-  let cap = policy_sensitivity_cap_pp(sensitivity)
+  let rel = policy_sensitivity_rel_bps(sensitivity)
+  let floor = policy_sensitivity_floor_bps(sensitivity)
+  let cap = policy_sensitivity_cap_bps(sensitivity)
 
-  "{\"rel\":"
-  <> float.to_string(rel)
-  <> ",\"floor_pp\":"
-  <> float.to_string(floor)
-  <> ",\"cap_pp\":"
-  <> float.to_string(cap)
-  <> "}"
+  json.object([
+    #("rel_bps", json.int(rel)),
+    #("floor_bps", json.int(floor)),
+    #("cap_bps", json.int(cap)),
+  ])
+  |> json.to_string
 }
 
 fn decode_policy() -> decode.Decoder(Policy) {
@@ -118,114 +123,93 @@ fn decode_policy() -> decode.Decoder(Policy) {
   use name <- decode.field("name", decode.string)
   use targets_json <- decode.field("targets", decode.string)
   use sensitivity_json <- decode.field("sensitivity", decode.string)
-  use min_trade_value_str <- decode.field("min_trade_value", decode.string)
-  use turnover_cap_str <- decode.field("turnover_cap", decode.string)
+  use min_trade_value_float <- decode.field("min_trade_value", decode.float)
+  use turnover_cap_float <- decode.field("turnover_cap_bps", decode.int)
 
   let policy_id = policy_id(id)
 
   // Validate name - panic on failure
   let policy_name = policy_name(name)
   // Parse targets JSON - panic on failure  
-  let targets_dict = case json_to_dict(targets_json) {
+  let policy_target = case json_to_targets(targets_json) {
     Ok(d) -> d
-    Error(_) -> panic as "FATAL: Invalid targets JSON"
-  }
-
-  // Validate targets - panic on failure
-  let policy_target = case convert_targets_dict(targets_dict) {
-    Ok(converted_dict) ->
-      case policy_target(policy_types.InstrumentType, converted_dict) {
-        Ok(t) -> t
-        Error(_) -> panic as "FATAL: Invalid policy targets"
-      }
-    Error(_) -> panic as "FATAL: Failed to convert targets dict"
+    Error(e) -> panic as { "FATAL: Invalid targets JSON" <> string.inspect(e) }
   }
 
   // Parse sensitivity JSON - panic on failure
-  let sensitivity_dict = case json_to_dict(sensitivity_json) {
+  let sensitivity = case json_to_sensitiviy(sensitivity_json) {
     Ok(d) -> d
-    Error(_) -> panic as "FATAL: Invalid sensitivity JSON"
-  }
-
-  // Extract sensitivity fields - panic if missing
-  let rel = case dict.get(sensitivity_dict, "rel") {
-    Ok(v) -> v
-    Error(_) -> panic as "FATAL: Missing rel field"
-  }
-
-  let floor_pp = case dict.get(sensitivity_dict, "floor_pp") {
-    Ok(v) -> v
-    Error(_) -> panic as "FATAL: Missing floor_pp field"
-  }
-
-  let cap_pp = case dict.get(sensitivity_dict, "cap_pp") {
-    Ok(v) -> v
-    Error(_) -> panic as "FATAL: Missing cap_pp field"
-  }
-
-  // Validate sensitivity - panic on failure
-  let policy_sensitivity = case policy_sensitivity(rel, floor_pp, cap_pp) {
-    Ok(s) -> s
-    Error(_) -> panic as "FATAL: Invalid policy sensitivity"
-  }
-
-  // Parse min trade value - panic on failure
-  let min_trade_value_float = case float.parse(min_trade_value_str) {
-    Ok(f) -> f
-    Error(_) -> panic as "FATAL: Invalid min_trade_value number"
+    Error(e) ->
+      panic as { "FATAL: Invalid sensitivity JSON: " <> string.inspect(e) }
   }
 
   // Validate min trade value - panic on failure
   let min_trade_value = case min_trade_value(min_trade_value_float) {
     Ok(v) -> v
-    Error(_) -> panic as "FATAL: Invalid min_trade_value"
-  }
-
-  // Parse turnover cap - panic on failure
-  let turnover_cap_float = case float.parse(turnover_cap_str) {
-    Ok(f) -> f
-    Error(_) -> panic as "FATAL: Invalid turnover_cap number"
+    Error(e) -> panic as { "FATAL: Invalid min_trade_value: " <> e }
   }
 
   // Validate turnover cap - panic on failure
   let turnover_cap = case turnover_cap(turnover_cap_float) {
     Ok(c) -> c
-    Error(_) -> panic as "FATAL: Invalid turnover_cap"
+    Error(e) -> panic as { "FATAL: Invalid turnover_cap: " <> e }
   }
 
   decode.success(Policy(
     id: policy_id,
     name: policy_name,
     targets: policy_target,
-    sensitivity: policy_sensitivity,
+    sensitivity: sensitivity,
     min_trade_value: min_trade_value,
     turnover_cap: turnover_cap,
   ))
 }
 
-fn json_to_dict(json: String) -> Result(dict.Dict(String, Float), Nil) {
-  // Simple JSON parsing - in production would use proper JSON parser
-  case json {
-    "{}" -> Ok(dict.new())
-    _ -> {
-      // This is a simplified implementation
-      // In a real implementation, you'd use a proper JSON parser
-      Error(Nil)
-    }
+fn json_to_targets(json: String) -> Result(PolicyTarget, json.DecodeError) {
+  let decoder = {
+    use target_type <- decode.field(
+      "target_type",
+      decode.map(decode.string, fn(s) {
+        case policy_types.policy_target_type_from_string(s) {
+          Ok(v) -> v
+          Error(s) -> panic as { "FATAL: could not parse target_type: " <> s }
+        }
+      }),
+    )
+    use weights <- decode.field(
+      "weights",
+      decode.dict(
+        decode.map(decode.string, fn(s) { policy_target_key(s) }),
+        decode.map(decode.int, fn(i) {
+          case allocation(i) {
+            Ok(a) -> a
+            Error(s) -> panic as { "FATAL: could not parse allocation: " <> s }
+          }
+        }),
+      ),
+    )
+
+    decode.success(case policy_target(target_type, weights) {
+      Ok(pt) -> pt
+      Error(s) -> panic as { "FATAL: could not parse policy target" <> s }
+    })
   }
+  json.parse(json, decoder)
+  // Simple JSON parsing - in production would use proper JSON parser
 }
 
-fn convert_targets_dict(
-  dict: dict.Dict(String, Float),
-) -> Result(dict.Dict(PolicyTargetKey, Allocation), Nil) {
-  dict
-  |> dict.to_list
-  |> list.try_map(fn(pair) {
-    let #(key, value) = pair
-    case allocation(value) {
-      Ok(alloc) -> Ok(#(policy_target_key(key), alloc))
-      Error(_) -> Error(Nil)
-    }
-  })
-  |> result.map(dict.from_list)
+fn json_to_sensitiviy(
+  json: String,
+) -> Result(PolicySensitivity, json.DecodeError) {
+  let decoder = {
+    // rel_bps: Int, floor_bps: Int, cap_bps: Int
+    use rel_bps <- decode.field("rel_bps", decode.int)
+    use floor_bps <- decode.field("floor_bps", decode.int)
+    use cap_bps <- decode.field("cap_bps", decode.int)
+    decode.success(case policy_sensitivity(rel_bps, floor_bps, cap_bps) {
+      Ok(ps) -> ps
+      Error(e) -> panic as { "FATAL: could not parse sensitivity: " <> e }
+    })
+  }
+  json.parse(json, decoder)
 }
