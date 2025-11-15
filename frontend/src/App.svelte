@@ -1,0 +1,47 @@
+<script lang="ts">
+  import PortfolioDriftChart from './lib/PortfolioDriftChart.svelte';
+
+  // Mock data with asymmetric bands
+  const mockPositions = [
+    { 
+      asset: 'Main Position', 
+      target: 80, 
+      current: 81,
+      bandLower: 0.05,  // -5%
+      bandUpper: 0.05   // +10%
+    },
+    { 
+      asset: 'Secondary', 
+      target: 15, 
+      current: 17,
+      bandLower: 0.10,  // -10%
+      bandUpper: 0.10   // +10%
+    },
+    { 
+      asset: 'Small Holding', 
+      target: 4, 
+      current: 3.2,
+      bandLower: 0.15,  // -15%
+      bandUpper: 0.15   // +20%
+    },
+    { 
+      asset: 'Tiny Position', 
+      target: 1, 
+      current: 0.95,
+      bandLower: 0.5,  // -10%
+      bandUpper: 0.5   // +10%
+    }
+  ];
+</script>
+
+<main>
+  <h1>FinancePal - Portfolio Drift</h1>
+  
+  <div class="chart-container">
+    <PortfolioDriftChart 
+      positions={mockPositions}
+      width={900}
+      height={500}
+    />
+  </div>
+</main>

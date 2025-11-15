@@ -4,3 +4,4 @@
 erl_crash.dump
 financepal.db
 *.csv
+node_modules/
