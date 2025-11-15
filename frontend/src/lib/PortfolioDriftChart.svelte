@@ -53,6 +53,52 @@
   let tooltip: HTMLDivElement;         // Reference to the tooltip element
 
   // ============================================================================
+  // COLOR CONFIGURATION - Easy to find and change colors
+  // ============================================================================
+  // All chart colors are defined here for easy customization
+  // You can use:
+  // 1. Skeleton CSS custom properties: 'var(--color-success-500)'
+  // 2. Tailwind colors: '#10b981'
+  // 3. Any valid CSS color: 'rgb(59, 130, 246)' or 'blue'
+  //
+  // NOTE: Skeleton v4 only has these semantic colors:
+  //   --color-primary, --color-secondary, --color-success, 
+  //   --color-warning, --color-error
+  // For other colors, use hex values or Tailwind colors
+
+  const COLORS = {
+    // Bar colors based on status
+    // ORIGINAL COLORS RESTORED - customize these values as needed
+    barInBand: '#10b981',           // Green - position within band (original)
+    barUnder: '#3b82f6',            // Blue - position under target (original)
+    barOver: '#ef4444',             // Red - position over target (original)
+    
+    // Band boundary markers
+    bandLine: '#f59e0b',            // Orange - band boundary lines (original)
+    bandDot: '#f59e0b',             // Orange - band boundary dots (original)
+    bandText: '#f59e0b',            // Orange - band range labels (original)
+    
+    // Target markers
+    targetLine: '#1f2937',          // Dark - target vertical line (original)
+    targetText: '#6b7280',          // Gray - target labels (original)
+    
+    // Current value labels
+    currentText: '#1f2937',         // Dark - current % labels (original)
+    
+    // Axis styling
+    axisText: '#6b7280',            // Gray - axis labels (original)
+    axisLine: '#d1d5db',            // Light gray - axis/grid lines (original)
+    axisLabel: '#6b7280',           // Gray - axis title (original)
+    
+    // Tooltip styling - using Skeleton surface colors for theme integration
+    tooltipBg: 'var(--color-surface-800)',      // Dark gray - tooltip background
+    tooltipBorder: 'var(--color-surface-600)',  // Medium gray - tooltip border
+    
+    // Chart background - using Skeleton surface color for theme integration
+    chartBg: 'var(--color-surface-50)'          // Very light gray - chart background
+  };
+
+  // ============================================================================
   // HELPER FUNCTIONS
   // ============================================================================
 
@@ -77,7 +123,7 @@
   // ============================================================================
 
   function renderChart() {
-    if (!chartContainer || positions.length === 0) return;
+    if (!chartContainer || !tooltip || positions.length === 0) return;
 
     // Clear any existing chart
     d3.select(chartContainer).selectAll('*').remove();
@@ -134,8 +180,11 @@
       return Math.max(d.current, d.target * (1 + d.bandUpper));
     }) || 100;
 
+    // Ensure domain goes to at least 100% to show the 100% tick mark
+    const domainMax = Math.max(maxPercent * 1.15, 100);
+
     const xScale = d3.scaleLinear()
-      .domain([0, maxPercent * 1.15])  // Add 15% padding on the right
+      .domain([0, domainMax])  // Add padding on the right, ensure 100% is included
       .range([0, chartWidth]);
 
     // ------------------------------------------------------------------------
@@ -151,8 +200,20 @@
       .attr('x2', d => xScale(d))
       .attr('y1', 0)
       .attr('y2', chartHeight)
-      .attr('stroke', '#e0e0e0')
+      .attr('stroke', COLORS.axisLine)
       .attr('stroke-width', 1);
+
+    // Add explicit 100% grid line if not already included in ticks
+    if (domainMax >= 100) {
+      g.append('line')
+        .attr('x1', xScale(100))
+        .attr('x2', xScale(100))
+        .attr('y1', 0)
+        .attr('y2', chartHeight)
+        .attr('stroke', COLORS.axisLine)
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '3,3');  // Dashed line for 100% mark
+    }
 
     // ------------------------------------------------------------------------
     // DRAW POSITIONS
@@ -176,10 +237,12 @@
 
       // ----------------------------------------------------------------------
       // CURRENT ALLOCATION BAR
-      // Color-coded: green (in band), blue (under), red (over)
+      // Color-coded based on status (in band, under, over)
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
-      const barColor = status === 'in' ? '#10b981' : 
-                       status === 'under' ? '#3b82f6' : '#ef4444';
+      const barColor = status === 'in' ? COLORS.barInBand : 
+                       status === 'under' ? COLORS.barUnder : COLORS.barOver;
 
       posGroup.append('rect')
         .attr('class', 'allocation-bar')
@@ -187,21 +250,23 @@
         .attr('y', yPos)
         .attr('width', xScale(pos.current))
         .attr('height', barHeight)
-        .attr('fill', barColor)
+        .style('fill', barColor)
         .attr('opacity', 0.85)
         .attr('rx', 0);  // Corner radius (0 = square corners)
 
       // ----------------------------------------------------------------------
-      // BAND BOUNDARY LINES (Orange dashed lines)
+      // BAND BOUNDARY LINES (Dashed lines showing acceptable range)
       // Drawn AFTER bars so they appear on top
       // ADJUST: stroke-width to change line thickness
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('line')
         .attr('x1', xScale(bandLower))
         .attr('x2', xScale(bandLower))
         .attr('y1', yPos)
         .attr('y2', yPos + barHeight)
-        .attr('stroke', '#f59e0b')
+        .style('stroke', COLORS.bandLine)
         .attr('stroke-width', 1.5)  // Line thickness
         .attr('stroke-dasharray', '5,3');  // Dash pattern: 5px dash, 3px gap
 
@@ -210,36 +275,40 @@
         .attr('x2', xScale(bandUpper))
         .attr('y1', yPos)
         .attr('y2', yPos + barHeight)
-        .attr('stroke', '#f59e0b')
+        .style('stroke', COLORS.bandLine)
         .attr('stroke-width', 1.5)
         .attr('stroke-dasharray', '5,3');
 
       // ----------------------------------------------------------------------
-      // BAND BOUNDARY DOTS (Orange circles at top of lines)
+      // BAND BOUNDARY DOTS (Circles at top of band lines)
       // ADJUST: 'r' attribute to change dot size
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('circle')
         .attr('cx', xScale(bandLower))
         .attr('cy', yPos)
         .attr('r', 5)  // Dot radius in pixels
-        .attr('fill', '#f59e0b');
+        .style('fill', COLORS.bandDot);
 
       posGroup.append('circle')
         .attr('cx', xScale(bandUpper))
         .attr('cy', yPos)
         .attr('r', 5)
-        .attr('fill', '#f59e0b');
+        .style('fill', COLORS.bandDot);
 
       // ----------------------------------------------------------------------
-      // BAND RANGE LABEL (Orange text above bar)
+      // BAND RANGE LABEL (Text above bar showing acceptable range)
       // Shows the acceptable range (e.g., "72.0%–88.0%")
       // ADJUST: font-size to change text size
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('text')
         .attr('x', (xScale(bandLower) + xScale(bandUpper)) / 2)
         .attr('y', yPos - 10)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#f59e0b')
+        .style('fill', COLORS.bandText)
         .attr('font-size', '13px')
         .attr('font-weight', '600')
         .text(`${bandLower.toFixed(1)}%–${bandUpper.toFixed(1)}%`);
@@ -248,39 +317,43 @@
       // CURRENT PERCENTAGE LABEL (Right of bar)
       // Shows the actual current allocation
       // ADJUST: font-size to change text size
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('text')
         .attr('x', xScale(pos.current) + 10)
         .attr('y', yPos + barHeight / 2)
         .attr('dominant-baseline', 'middle')
-        .attr('fill', '#1f2937')
+        .style('fill', COLORS.currentText)
         .attr('font-size', '14px')
         .attr('font-weight', '700')
         .text(`${pos.current.toFixed(pos.current < 10 ? 2 : 0)}%`);
 
       // ----------------------------------------------------------------------
-      // TARGET MARKER (Vertical black line)
-      // Shows where the target allocation is
+      // TARGET MARKER (Vertical line showing target allocation)
       // ADJUST: stroke-width to change line thickness
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('line')
         .attr('x1', xScale(pos.target))
         .attr('x2', xScale(pos.target))
         .attr('y1', yPos - 8)
         .attr('y2', yPos + barHeight + 8)
-        .attr('stroke', '#1f2937')
+        .style('stroke', COLORS.targetLine)
         .attr('stroke-width', 2);
 
       // ----------------------------------------------------------------------
-      // TARGET LABEL (Below bar)
-      // Shows "T: 80%" for target allocation
+      // TARGET LABEL (Below bar showing "T: 80%")
       // ADJUST: font-size to change text size
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
       posGroup.append('text')
         .attr('x', xScale(pos.target))
         .attr('y', yPos + barHeight + 22)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#6b7280')
+        .style('fill', COLORS.targetText)
         .attr('font-size', '12px')
         .attr('font-weight', '500')
         .text(`T: ${pos.target}%`);
@@ -325,15 +398,23 @@
             </div>
           `;
 
-          // Position and show tooltip
+          // Position and show tooltip relative to chart container
+          // TOOLTIP POSITIONING: Adjust offset values to change tooltip position relative to cursor
+          // Positive Y value moves tooltip down, negative moves it up
+          // Positive X value moves tooltip right, negative moves it left
+          const containerRect = chartContainer.getBoundingClientRect();
           tooltip.style.display = 'block';
-          tooltip.style.left = (event.pageX + 10) + 'px';
-          tooltip.style.top = (event.pageY - 10) + 'px';
+          tooltip.style.left = (event.clientX - containerRect.left + 10) + 'px';
+          tooltip.style.top = (event.clientY - containerRect.top + 15) + 'px';
         })
         .on('mousemove', function(event) {
           // Update tooltip position as mouse moves
-          tooltip.style.left = (event.pageX + 10) + 'px';
-          tooltip.style.top = (event.pageY - 10) + 'px';
+          // TOOLTIP POSITIONING: Adjust offset values to change tooltip position relative to cursor
+          // Positive Y value moves tooltip down, negative moves it up
+          // Positive X value moves tooltip right, negative moves it left
+          const containerRect = chartContainer.getBoundingClientRect();
+          tooltip.style.left = (event.clientX - containerRect.left + 10) + 'px';
+          tooltip.style.top = (event.clientY - containerRect.top + 15) + 'px';
         })
         .on('mouseleave', function() {
           // Reset bar opacity and hide tooltip
@@ -346,6 +427,8 @@
 
     // ------------------------------------------------------------------------
     // Y AXIS (Asset labels on the left)
+    // Colors defined in COLORS configuration object at top of file
+    // Use .style() not .attr() for CSS custom properties to work
     // ------------------------------------------------------------------------
     const yAxis = g.append('g')
       .attr('class', 'y-axis')
@@ -354,13 +437,15 @@
     yAxis.selectAll('text')
       .style('font-size', '14px')
       .style('font-weight', '500')
-      .style('fill', '#6b7280');
+      .style('fill', COLORS.axisText);
 
     yAxis.selectAll('line').remove();  // Remove tick lines
     yAxis.select('.domain').remove();  // Remove axis line
 
     // ------------------------------------------------------------------------
     // X AXIS (Percentage scale at the bottom)
+    // Colors defined in COLORS configuration object at top of file
+    // Use .style() not .attr() for CSS custom properties to work
     // ------------------------------------------------------------------------
     const xAxis = g.append('g')
       .attr('class', 'x-axis')
@@ -371,22 +456,24 @@
 
     xAxis.selectAll('text')
       .style('font-size', '13px')
-      .style('fill', '#6b7280');
+      .style('fill', COLORS.axisText);
 
     xAxis.selectAll('line')
-      .style('stroke', '#d1d5db');
+      .style('stroke', COLORS.axisLine);
 
     xAxis.select('.domain')
-      .style('stroke', '#d1d5db');
+      .style('stroke', COLORS.axisLine);
 
     // ------------------------------------------------------------------------
     // X AXIS LABEL
+    // Colors defined in COLORS configuration object at top of file
+    // Use .style() not .attr() for CSS custom properties to work
     // ------------------------------------------------------------------------
     g.append('text')
       .attr('x', chartWidth / 2)
       .attr('y', chartHeight + 50)
       .attr('text-anchor', 'middle')
-      .attr('fill', '#6b7280')
+      .style('fill', COLORS.axisLabel)
       .attr('font-size', '14px')
       .attr('font-weight', '500')
       .text('Allocation (%)');
@@ -428,19 +515,21 @@
     display: inline-block;
   }
 
-  /* Chart background and styling */
+  /* Chart background and styling - uses Skeleton surface color */
+  /* Color defined in COLORS configuration object at top of file */
   .chart {
-    background: #f5f5f5;
+    background: var(--color-surface-50);
     border-radius: 8px;
     padding: 10px;
   }
 
-  /* Tooltip styling - dark theme with rounded corners */
+  /* Tooltip styling - uses Skeleton surface colors */
+  /* Colors defined in COLORS configuration object at top of file */
   .tooltip {
-    position: fixed;
+    position: absolute;
     display: none;
-    background: #2d3748;  /* Dark gray background */
-    border: 1px solid #4a5568;
+    background: var(--color-surface-800);  /* Dark surface background */
+    border: 1px solid var(--color-surface-600);
     border-radius: 8px;
     padding: 14px;
     pointer-events: none;  /* Tooltip doesn't interfere with mouse events */

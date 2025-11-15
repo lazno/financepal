@@ -9,7 +9,10 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "devDependencies": {
+    "@skeletonlabs/skeleton": "^4.3.4",
+    "@skeletonlabs/skeleton-svelte": "^4.3.4",
     "@sveltejs/vite-plugin-svelte": "^5.0.2",
+    "@tailwindcss/vite": "^4.1.17",
     "@tsconfig/svelte": "^5.0.4",
     "svelte": "^5.2.0",
     "svelte-check": "^4.0.0",
@@ -18,7 +21,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "d3": "^7.9.0",
-    "@types/d3": "^7.4.3"
+    "@types/d3": "^7.4.3",
+    "d3": "^7.9.0"
   }
 }

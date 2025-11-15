@@ -50,8 +50,12 @@
   let centerLabel: HTMLDivElement;
   let centerPercentage: HTMLDivElement;
 
-  // Fireflies color palette - 12 sequential colors
-  const firefliesColors = [
+  // ============================================================================
+  // COLOR CONFIGURATION - Easy to find and change colors
+  // ============================================================================
+  // Fireflies color palette - 12 sequential colors (preserved as requested)
+  // These are the original colors you want to keep
+  const SLICE_COLORS = [
     '#5a7a7c', '#5d9b8e', '#7db88a', '#a0d17d', '#c8e66f', '#d4ea6a',
     '#b8d65c', '#9cc458', '#88b350', '#74a248', '#689142', '#5d803c'
   ];
@@ -129,7 +133,7 @@
     // Add path for each slice
     slices.append('path')
       .attr('d', arc as any)
-      .attr('fill', (_d, i) => firefliesColors[i % firefliesColors.length])
+      .attr('fill', (_d, i) => SLICE_COLORS[i % SLICE_COLORS.length])
       .attr('stroke', 'white')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
@@ -162,10 +166,11 @@
         slices.selectAll('path').style('opacity', 0.9);
       });
 
-    // Add white circle for donut hole
+    // Add transparent circle for donut hole (no background, just defines the hole)
+    // The center text will show through the transparent background
     g.append('circle')
       .attr('r', innerRadius)
-      .attr('fill', 'white');
+      .attr('fill', 'transparent');
   }
 
   // ============================================================================
@@ -226,23 +231,32 @@
   }
 
   .center-value {
-    font-size: 1.6rem;
+    /* Uses Skeleton h3 typography scale */
+    font-size: var(--text-3xl);
     font-weight: 700;
-    color: #2d3748;
+    /* Uses Skeleton surface color with light-dark() for theme adaptation */
+    /* 900 in light mode, 100 in dark mode for proper contrast */
+    color: var(--color-surface-900-100);
     margin-bottom: 0.2rem;
     transition: all 0.3s ease;
   }
 
   .center-label {
-    font-size: 0.7rem;
-    color: #718096;
+    /* Uses Skeleton small text size */
+    font-size: var(--text-sm);
+    /* Uses Skeleton surface color with light-dark() for theme adaptation */
+    /* 500 in light mode, 400 in dark mode for proper contrast */
+    color: var(--color-surface-500-400);
     font-weight: 500;
     transition: all 0.3s ease;
   }
 
   .center-percentage {
-    font-size: 0.85rem;
-    color: #4a5568;
+    /* Uses Skeleton base text size */
+    font-size: var(--text-base);
+    /* Uses Skeleton surface color with light-dark() for theme adaptation */
+    /* 600 in light mode, 300 in dark mode for proper contrast */
+    color: var(--color-surface-600-300);
     margin-top: 0.2rem;
     font-weight: 600;
   }
