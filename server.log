@@ -1,0 +1,15 @@
+   Compiled in 0.05s
+    Running financepal.main
+-> Creating migrations table
+-> Loading migrations from /Users/norbertlazzeri/dev/priv/portfolio-tracker-spikes/gleam/financepal/build/dev/erlang/financepal/priv/migration
+-> Filtering applied migrations
+-> No migrations to apply
+Database initialized at: financepal.db
+Successfully cleared db
+now fetching prices
+inserted 0 entries into price data
+Listening on http://127.0.0.1:8080
+Server started on http://localhost:8080
+[1;34mINFO[0m 200 GET /
+[1;34mINFO[0m 200 GET /css/index.css
+[1;32mNTCE[0m args=[] label=ErrorLogger(InfoMsg) format=charlist.from_string("SIGTERM received - shutting down~n")

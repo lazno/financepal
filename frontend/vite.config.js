@@ -5,8 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   build: {
-    outDir: '../priv/static',
-    emptyOutDir: false,
+    outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         entryFileNames: 'js/[name].js',

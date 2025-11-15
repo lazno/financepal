@@ -1,6 +1,7 @@
 import application/types.{type Context}
 import gleam/http
 import rest/resource/directa_sim_resource
+import simplifile
 import wisp.{type Request, type Response}
 
 pub fn handle_request(req: Request, ctx: Context) -> Response {
@@ -11,8 +12,20 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   case wisp.path_segments(req) {
     ["api", "import"] -> handle_import(req, ctx)
     // ["api", "portfolio"] -> handle_portfolio(req, ctx)
-    _ -> wisp.not_found()
+    [] -> serve_index()
+    _ -> serve_static(req)
   }
+}
+
+fn serve_index() -> Response {
+  // Read and serve index.html directly for root path
+  let assert Ok(index_content) = simplifile.read("frontend/dist/index.html")
+  wisp.html_response(index_content, 200)
+}
+
+fn serve_static(req: Request) -> Response {
+  // Serve all other requests from frontend/dist directory
+  wisp.serve_static(req, under: "/", from: "frontend/dist", next: fn() { wisp.not_found() })
 }
 
 // fn handle_portfolio(req: Request, ctx: Context) -> Response {

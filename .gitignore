@@ -5,3 +5,10 @@ erl_crash.dump
 financepal.db
 *.csv
 node_modules/
+
+# Frontend build output (derived artifacts - do not commit)
+frontend/dist/
+
+# Keep priv/static for truly static files only (favicon, robots.txt, etc.)
+priv/static/*
+!priv/static/.gitkeep
