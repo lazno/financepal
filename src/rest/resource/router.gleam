@@ -25,7 +25,9 @@ fn serve_index() -> Response {
 
 fn serve_static(req: Request) -> Response {
   // Serve all other requests from frontend/dist directory
-  wisp.serve_static(req, under: "/", from: "frontend/dist", next: fn() { wisp.not_found() })
+  wisp.serve_static(req, under: "/", from: "frontend/dist", next: fn() {
+    wisp.not_found()
+  })
 }
 
 // fn handle_portfolio(req: Request, ctx: Context) -> Response {
