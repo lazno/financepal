@@ -134,9 +134,9 @@
     // ------------------------------------------------------------------------
     const margin = { 
       top: 60,      // Space above chart for band labels
-      right: 120,   // Space to the right for current % labels
+      right: 40,    // Space to the right for current % labels
       bottom: 80,   // Space below chart for axis and target labels
-      left: 180     // Space to the left for asset names
+      left: 120     // Space to the left for asset names
     };
     const chartWidth = width - margin.left - margin.right;
     const chartHeight = height - margin.top - margin.bottom;
@@ -398,23 +398,54 @@
             </div>
           `;
 
-          // Position and show tooltip relative to chart container
-          // TOOLTIP POSITIONING: Adjust offset values to change tooltip position relative to cursor
-          // Positive Y value moves tooltip down, negative moves it up
-          // Positive X value moves tooltip right, negative moves it left
-          const containerRect = chartContainer.getBoundingClientRect();
+          // Position and show tooltip with smart viewport-aware placement
+          // Uses fixed positioning to prevent cutoff
           tooltip.style.display = 'block';
-          tooltip.style.left = (event.clientX - containerRect.left + 10) + 'px';
-          tooltip.style.top = (event.clientY - containerRect.top + 15) + 'px';
+          
+          // Get tooltip dimensions after making it visible
+          const tooltipRect = tooltip.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          
+          // Calculate initial position
+          let left = event.clientX + 10;
+          let top = event.clientY + 15;
+          
+          // Adjust horizontal position if tooltip would overflow right edge
+          if (left + tooltipRect.width > viewportWidth - 10) {
+            left = event.clientX - tooltipRect.width - 10;
+          }
+          
+          // Adjust vertical position if tooltip would overflow bottom edge
+          if (top + tooltipRect.height > viewportHeight - 10) {
+            top = event.clientY - tooltipRect.height - 10;
+          }
+          
+          tooltip.style.left = left + 'px';
+          tooltip.style.top = top + 'px';
         })
         .on('mousemove', function(event) {
-          // Update tooltip position as mouse moves
-          // TOOLTIP POSITIONING: Adjust offset values to change tooltip position relative to cursor
-          // Positive Y value moves tooltip down, negative moves it up
-          // Positive X value moves tooltip right, negative moves it left
-          const containerRect = chartContainer.getBoundingClientRect();
-          tooltip.style.left = (event.clientX - containerRect.left + 10) + 'px';
-          tooltip.style.top = (event.clientY - containerRect.top + 15) + 'px';
+          // Update tooltip position as mouse moves with smart viewport-aware placement
+          const tooltipRect = tooltip.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          
+          // Calculate initial position
+          let left = event.clientX + 10;
+          let top = event.clientY + 15;
+          
+          // Adjust horizontal position if tooltip would overflow right edge
+          if (left + tooltipRect.width > viewportWidth - 10) {
+            left = event.clientX - tooltipRect.width - 10;
+          }
+          
+          // Adjust vertical position if tooltip would overflow bottom edge
+          if (top + tooltipRect.height > viewportHeight - 10) {
+            top = event.clientY - tooltipRect.height - 10;
+          }
+          
+          tooltip.style.left = left + 'px';
+          tooltip.style.top = top + 'px';
         })
         .on('mouseleave', function() {
           // Reset bar opacity and hide tooltip
@@ -526,7 +557,7 @@
   /* Tooltip styling - uses Skeleton surface colors */
   /* Colors defined in COLORS configuration object at top of file */
   .tooltip {
-    position: absolute;
+    position: fixed;  /* Fixed positioning prevents cutoff */
     display: none;
     background: var(--color-surface-800);  /* Dark surface background */
     border: 1px solid var(--color-surface-600);
