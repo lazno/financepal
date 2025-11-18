@@ -171,25 +171,37 @@
 
     // ------------------------------------------------------------------------
     // BAR HEIGHT CALCULATION
-    // Bars are scaled based on target allocation for visual hierarchy
+    // Bars are scaled based on current allocation for visual hierarchy
+    // 
+    // ADJUST THESE VALUES TO CONTROL BAR HEIGHT EXAGGERATION:
+    // - minBarHeight: Smaller values = more dramatic difference (try 8-20)
+    // - maxBarHeight multiplier: Larger values = taller max bars (try 0.8-1.0)
+    // 
+    // Examples:
+    //   minBarHeight=15, multiplier=0.8  -> moderate exaggeration
+    //   minBarHeight=8,  multiplier=0.9  -> strong exaggeration
+    //   minBarHeight=20, multiplier=0.65 -> subtle exaggeration (original)
     // ------------------------------------------------------------------------
-    const maxTarget = d3.max(positions, (d) => d.target) || 100;
-    const minBarHeight = 30; // Minimum bar height in pixels
-    const maxBarHeight = Math.min((chartHeight / positions.length) * 0.65, 100);
+    const maxCurrent = d3.max(positions, (d) => d.current) || 100;
+    const minBarHeight = 12; // Minimum bar height in pixels (smaller = more dramatic)
+    const maxBarHeight = Math.min((chartHeight / positions.length) * 0.85, 120); // Max bar height
 
     const heightScale = d3
       .scaleLinear()
-      .domain([0, maxTarget])
+      .domain([0, maxCurrent])
       .range([minBarHeight, maxBarHeight]);
 
     // ------------------------------------------------------------------------
     // SCALES
     // ------------------------------------------------------------------------
+    
+    // Sort positions by current allocation (descending) for visual hierarchy
+    const sortedPositions = [...positions].sort((a, b) => b.current - a.current);
 
     // Y-axis: Position each asset
     const yScale = d3
       .scaleBand()
-      .domain(positions.map((d) => d.asset))
+      .domain(sortedPositions.map((d) => d.asset))
       .range([0, chartHeight])
       .padding(0.3); // Space between bars (0-1, higher = more space)
 
@@ -239,9 +251,10 @@
     // ------------------------------------------------------------------------
     // DRAW POSITIONS
     // Each position gets its own group with bar, markers, and labels
+    // (Already sorted by current allocation in the yScale definition above)
     // ------------------------------------------------------------------------
-    positions.forEach((pos) => {
-      const barHeight = heightScale(pos.target);
+    sortedPositions.forEach((pos) => {
+      const barHeight = heightScale(pos.current);
       const yPos =
         (yScale(pos.asset) || 0) + (yScale.bandwidth() - barHeight) / 2;
 
