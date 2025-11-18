@@ -31,8 +31,6 @@
 
   interface Props {
     positions: Position[]; // Array of positions to visualize
-    width?: number; // Total SVG width in pixels (default: 1200)
-    height?: number; // Total SVG height in pixels (default: 600)
   }
 
   // ============================================================================
@@ -40,9 +38,7 @@
   // ============================================================================
 
   let {
-    positions = $bindable([]),
-    width = 1200,
-    height = 600,
+    positions = $bindable([])
   }: Props = $props();
 
   // ============================================================================
@@ -51,6 +47,8 @@
 
   let chartContainer: HTMLDivElement; // Reference to the chart container
   let tooltip: HTMLDivElement; // Reference to the tooltip element
+  let containerWidth = $state(0);
+  let containerHeight = $state(0);
 
   // ============================================================================
   // COLOR CONFIGURATION - Easy to find and change colors
@@ -118,8 +116,25 @@
   // CHART RENDERING
   // ============================================================================
 
+  function updateDimensions() {
+    if (chartContainer) {
+      // Get the actual width of the parent container
+      const rect = chartContainer.getBoundingClientRect();
+      containerWidth = rect.width || chartContainer.clientWidth || chartContainer.offsetWidth;
+      
+      // If still 0, try the parent element
+      if (containerWidth === 0 && chartContainer.parentElement) {
+        containerWidth = chartContainer.parentElement.clientWidth;
+      }
+      
+      // Responsive height: taller on mobile, shorter on desktop
+      const baseHeight = window.innerWidth < 640 ? 800 : window.innerWidth < 1024 ? 600 : 500;
+      containerHeight = Math.max(400, Math.min(baseHeight, positions.length * 80));
+    }
+  }
+
   function renderChart() {
-    if (!chartContainer || !tooltip || positions.length === 0) return;
+    if (!chartContainer || !tooltip || positions.length === 0 || containerWidth === 0) return;
 
     // Clear any existing chart
     d3.select(chartContainer).selectAll("*").remove();
@@ -144,17 +159,20 @@
     };
 
     // ------------------------------------------------------------------------
-    // LAYOUT CONFIGURATION
+    // LAYOUT CONFIGURATION - Responsive margins
     // Adjust these values to change spacing and positioning
     // ------------------------------------------------------------------------
+    const isMobile = containerWidth < 640;
+    const isTablet = containerWidth >= 640 && containerWidth < 1024;
+    
     const margin = {
-      top: 60, // Space above chart for band labels
-      right: 40, // Space to the right for current % labels
-      bottom: 80, // Space below chart for axis and target labels
-      left: 120, // Space to the left for asset names
+      top: isMobile ? 40 : 60,
+      right: isMobile ? 60 : 80,
+      bottom: isMobile ? 60 : 80,
+      left: isMobile ? 80 : isTablet ? 100 : 120,
     };
-    const chartWidth = width - margin.left - margin.right;
-    const chartHeight = height - margin.top - margin.bottom;
+    const chartWidth = containerWidth - margin.left - margin.right;
+    const chartHeight = containerHeight - margin.top - margin.bottom;
 
     // ------------------------------------------------------------------------
     // SVG SETUP
@@ -162,8 +180,10 @@
     const svg = d3
       .select(chartContainer)
       .append("svg")
-      .attr("width", width)
-      .attr("height", height);
+      .attr("width", containerWidth)
+      .attr("height", containerHeight)
+      .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     const g = svg
       .append("g")
@@ -356,11 +376,11 @@
       // ----------------------------------------------------------------------
       posGroup
         .append("text")
-        .attr("x", xScale(pos.current) + 10)
+        .attr("x", xScale(pos.current) + (isMobile ? 6 : 10))
         .attr("y", yPos + barHeight / 2)
         .attr("dominant-baseline", "middle")
         .style("fill", COLORS.currentText)
-        .attr("font-size", "14px")
+        .attr("font-size", isMobile ? "11px" : "14px")
         .attr("font-weight", "700")
         .text(`${pos.current.toFixed(pos.current < 10 ? 2 : 0)}%`);
 
@@ -491,7 +511,7 @@
 
     yAxis
       .selectAll("text")
-      .style("font-size", "14px")
+      .style("font-size", isMobile ? "11px" : "14px")
       .style("font-weight", "500")
       .style("fill", COLORS.axisText);
 
@@ -510,13 +530,13 @@
       .call(
         d3
           .axisBottom(xScale)
-          .ticks(10)
+          .ticks(isMobile ? 5 : 10)
           .tickFormat((d) => `${d}%`),
       );
 
     xAxis
       .selectAll("text")
-      .style("font-size", "13px")
+      .style("font-size", isMobile ? "10px" : "13px")
       .style("fill", COLORS.axisText);
 
     xAxis.selectAll("line").style("stroke", COLORS.axisLine);
@@ -530,10 +550,10 @@
     // ------------------------------------------------------------------------
     g.append("text")
       .attr("x", chartWidth / 2)
-      .attr("y", chartHeight + 50)
+      .attr("y", chartHeight + (isMobile ? 40 : 50))
       .attr("text-anchor", "middle")
       .style("fill", COLORS.axisLabel)
-      .attr("font-size", "14px")
+      .attr("font-size", isMobile ? "12px" : "14px")
       .attr("font-weight", "500")
       .text("Allocation (%)");
   }
@@ -543,7 +563,19 @@
   // ============================================================================
 
   onMount(() => {
-    renderChart();
+    // Use requestAnimationFrame to ensure DOM layout is complete
+    requestAnimationFrame(() => {
+      updateDimensions();
+      renderChart();
+    });
+
+    // Handle window resize
+    const handleResize = () => {
+      updateDimensions();
+      renderChart();
+    };
+    
+    window.addEventListener('resize', handleResize);
 
     // Watch for theme changes and re-render
     const observer = new MutationObserver((mutations) => {
@@ -562,12 +594,15 @@
       attributeFilter: ["data-mode"],
     });
 
-    return () => observer.disconnect();
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
+    };
   });
 
-  // Re-render when positions change
+  // Re-render when positions change or dimensions change
   $effect(() => {
-    if (positions) {
+    if (positions && containerWidth > 0) {
       renderChart();
     }
   });
@@ -602,13 +637,15 @@
   /* Container for chart and tooltip */
   .chart-wrapper {
     position: relative;
-    display: inline-block;
+    display: block;
+    width: 100%;
   }
 
   /* Chart background and styling */
   .chart {
     border-radius: 8px;
     padding: 10px;
+    width: 100%;
   }
 
   /* Tooltip styling */

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import PortfolioDriftChart from './PortfolioDriftChart.svelte';
   import type { DriftPosition } from './api';
   
@@ -12,24 +12,34 @@
   
   let container: HTMLDivElement;
   let containerWidth = $state(0);
-  let containerHeight = $state(0);
   
   function updateDimensions() {
     if (container) {
       containerWidth = container.clientWidth;
-      containerHeight = Math.round(containerWidth * aspectRatio);
     }
   }
   
   onMount(() => {
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
+    // Use requestAnimationFrame to ensure DOM is ready
+    requestAnimationFrame(() => {
+      updateDimensions();
+    });
+    
+    const handleResize = () => {
+      requestAnimationFrame(() => {
+        updateDimensions();
+      });
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   });
   
   $effect(() => {
     // Update when positions change or sidebar collapses
-    updateDimensions();
+    requestAnimationFrame(() => {
+      updateDimensions();
+    });
   });
 </script>
 
@@ -37,8 +47,6 @@
   {#if containerWidth > 0}
     <PortfolioDriftChart 
       {positions}
-      width={containerWidth}
-      height={containerHeight}
     />
   {/if}
 </div>

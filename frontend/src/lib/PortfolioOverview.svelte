@@ -27,8 +27,6 @@
 
   interface Props {
     positions?: Position[];
-    width?: number;
-    height?: number;
   }
 
   // ============================================================================
@@ -36,9 +34,7 @@
   // ============================================================================
 
   let {
-    positions = $bindable([]),
-    width = 400,
-    height = 400
+    positions = $bindable([])
   }: Props = $props();
 
   // ============================================================================
@@ -49,6 +45,8 @@
   let centerValue: HTMLDivElement;
   let centerLabel: HTMLDivElement;
   let centerPercentage: HTMLDivElement;
+  let containerWidth = $state(0);
+  let containerHeight = $state(0);
 
   // ============================================================================
   // COLOR CONFIGURATION - Easy to find and change colors
@@ -88,8 +86,15 @@
   // CHART RENDERING
   // ============================================================================
 
+  function updateDimensions() {
+    if (chartContainer) {
+      containerWidth = chartContainer.clientWidth;
+      containerHeight = containerWidth; // Square aspect ratio
+    }
+  }
+
   function renderChart() {
-    if (!chartContainer || positions.length === 0) return;
+    if (!chartContainer || positions.length === 0 || containerWidth === 0) return;
 
     // Clear existing chart
     d3.select(chartContainer).selectAll('*').remove();
@@ -98,19 +103,19 @@
     const defaultValue = formatCurrency(totalValueCalc);
     const defaultLabel = 'Total';
 
-    // Create SVG
+    // Create SVG with responsive dimensions
     const svg = d3.select(chartContainer)
       .append('svg')
-      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('viewBox', `0 0 ${containerWidth} ${containerHeight}`)
       .attr('preserveAspectRatio', 'xMidYMid meet')
       .attr('width', '100%')
       .attr('height', '100%');
 
     const g = svg.append('g')
-      .attr('transform', `translate(${width / 2}, ${height / 2})`);
+      .attr('transform', `translate(${containerWidth / 2}, ${containerHeight / 2})`);
 
     // Donut dimensions
-    const radius = Math.min(width, height) / 2 - 20;
+    const radius = Math.min(containerWidth, containerHeight) / 2 - 20;
     const innerRadius = radius * 0.7; // Creates a larger donut hole for thinner slices
 
     // Create pie layout
@@ -184,12 +189,25 @@
   // ============================================================================
 
   onMount(() => {
+    updateDimensions();
     renderChart();
+    
+    // Handle window resize
+    const handleResize = () => {
+      updateDimensions();
+      renderChart();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   });
 
-  // Re-render when positions change
+  // Re-render when positions change or dimensions change
   $effect(() => {
-    if (positions) {
+    if (positions && containerWidth > 0) {
       renderChart();
     }
   });
@@ -215,9 +233,10 @@
 <style>
   .chart-wrapper {
     position: relative;
-    display: inline-block;
+    display: block;
     width: 100%;
-    max-width: 400px;
+    max-width: min(100%, 500px);
+    margin: 0 auto;
   }
 
   .chart-container {
