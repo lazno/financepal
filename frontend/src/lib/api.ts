@@ -40,30 +40,30 @@ const mockPortfolioPositions: Position[] = [
 ];
 
 const mockDriftPositions: DriftPosition[] = [
-  { 
-    asset: 'Main Position', 
-    target: 80, 
+  {
+    asset: 'Main Position',
+    target: 80,
     current: 81,
     bandLower: 0.05,
     bandUpper: 0.05
   },
-  { 
-    asset: 'Secondary', 
-    target: 15, 
+  {
+    asset: 'Secondary',
+    target: 15,
     current: 17,
     bandLower: 0.10,
     bandUpper: 0.10
   },
-  { 
-    asset: 'Small Holding', 
-    target: 4, 
+  {
+    asset: 'Small Holding',
+    target: 4,
     current: 3.2,
     bandLower: 0.15,
     bandUpper: 0.15
   },
-  { 
-    asset: 'Tiny Position', 
-    target: 1, 
+  {
+    asset: 'Tiny Position',
+    target: 1,
     current: 0.95,
     bandLower: 0.5,
     bandUpper: 0.5
@@ -72,12 +72,12 @@ const mockDriftPositions: DriftPosition[] = [
 
 export async function fetchDashboardData(): Promise<Position[]> {
   // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 5));
   return mockPortfolioPositions;
 }
 
 export async function fetchDriftData(): Promise<DriftPosition[]> {
   // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  await new Promise(resolve => setTimeout(resolve, 5));
   return mockDriftPositions;
 }

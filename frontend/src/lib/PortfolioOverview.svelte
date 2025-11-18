@@ -130,11 +130,17 @@
       .append('g')
       .attr('class', 'slice');
 
+    // Get stroke color from CSS custom property for theme adaptation
+    const root = document.documentElement;
+    const computedStyle = getComputedStyle(root);
+    const strokeColorRgb = computedStyle.getPropertyValue('--color-surface-50').trim();
+    const strokeColor = strokeColorRgb ? `rgb(${strokeColorRgb})` : '#ffffff';
+    
     // Add path for each slice
     slices.append('path')
       .attr('d', arc as any)
       .attr('fill', (_d, i) => SLICE_COLORS[i % SLICE_COLORS.length])
-      .attr('stroke', 'white')
+      .attr('stroke', strokeColor)
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
       .style('opacity', 0.9)

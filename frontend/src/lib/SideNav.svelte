@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Navigation } from "@skeletonlabs/skeleton-svelte";
-  import IconDashboard from '~icons/lucide/layout-dashboard';
-  import IconTrending from '~icons/lucide/trending-up';
-  import IconPanelClose from '~icons/lucide/panel-left-close';
-  import IconPanelOpen from '~icons/lucide/panel-left-open';
+  import IconDashboard from "~icons/lucide/layout-dashboard";
+  import IconTrending from "~icons/lucide/trending-up";
+  import IconPanelClose from "~icons/lucide/panel-left-close";
+  import IconPanelOpen from "~icons/lucide/panel-left-open";
 
   interface Props {
     collapsed?: boolean;
@@ -33,8 +33,10 @@
 </script>
 
 <Navigation
-  layout={collapsed ? "rail" : "sidebar"}
-  class="h-full bg-surface-50-950 border-r border-surface-200-800"
+  layout="sidebar"
+  class="h-full bg-surface-50-950 border-r border-surface-200-800 transition-all duration-300 {collapsed
+    ? 'w-20'
+    : 'w-64'}"
 >
   <Navigation.Header>
     <div
@@ -57,8 +59,8 @@
     </div>
   </Navigation.Header>
 
-  <Navigation.Content>
-    <Navigation.Menu>
+  <Navigation.Content class="pt-4">
+    <Navigation.Menu class="flex flex-col gap-2">
       {#each navItems as item}
         <a
           href={item.path}
@@ -66,18 +68,19 @@
             e.preventDefault();
             navigate(item.path);
           }}
-          class="btn hover:preset-tonal justify-start px-4 w-full {collapsed
-            ? 'aspect-square max-w-[84px] flex-col items-center gap-1'
-            : 'flex items-center gap-3'}"
+          class="btn hover:preset-tonal {collapsed
+            ? 'w-[52px] mx-auto flex-col items-center justify-center gap-1'
+            : 'flex items-center gap-3 px-4 w-full justify-start'}"
           class:preset-filled-primary-500={currentPath === item.path}
         >
-          <item.icon class="w-5 h-5" />
+          <item.icon class="w-5 h-5 flex-shrink-0" />
           {#if !collapsed}
-            <span class="text-sm font-medium text-surface-900-50">{item.label}</span>
+            <span class="text-sm font-medium text-surface-900-50"
+              >{item.label}</span
+            >
           {/if}
         </a>
       {/each}
     </Navigation.Menu>
   </Navigation.Content>
 </Navigation>
-

@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
-@import '@skeletonlabs/skeleton/themes/mona';
+@import '@skeletonlabs/skeleton/themes/catppuccin';
 
 /* Dark mode configuration using data-mode attribute (Skeleton standard) */
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
