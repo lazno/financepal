@@ -14,21 +14,22 @@ export interface DriftPosition {
   status: 'in_band' | 'out_of_band';
 }
 
-interface PortfolioResponse {
+export interface PositionValue {
+  symbol: string;
+  name: string;
+  quantity: number;
+  price: number;
+  market_value: number;
+  instrument_type: string;
+}
+
+export interface PortfolioResponse {
   positions_by_currency: Record<string, CurrencyTotal>[];
 }
 
 interface CurrencyTotal {
   total_market_value: number;
   positions: PositionValue[];
-}
-
-interface PositionValue {
-  symbol: string;
-  name: string;
-  quantity: number;
-  price: number;
-  market_value: number;
 }
 
 interface DriftAnalysisResponse {
@@ -38,6 +39,59 @@ interface DriftAnalysisResponse {
   bandLower: number;
   bandUpper: number;
   status: string;
+}
+
+export interface PolicySensitivity {
+  rel_bps: number;
+  floor_bps: number;
+  cap_bps: number;
+}
+
+export interface Policy {
+  id: string;
+  targets: Record<string, number>; // key -> bps
+  sensitivity: PolicySensitivity;
+}
+
+export async function fetchPolicy(): Promise<Policy | null> {
+  const response = await fetch('/api/policy');
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch policy: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
+export async function updatePolicy(policy: Policy): Promise<void> {
+  const response = await fetch('/api/policy', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(policy)
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update policy: ${errorText}`);
+  }
+}
+
+export async function deletePolicy(): Promise<void> {
+  const response = await fetch('/api/policy', {
+    method: 'DELETE'
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to delete policy: ${errorText}`);
+  }
+}
+
+export async function fetchPortfolioRaw(): Promise<PortfolioResponse> {
+  const response = await fetch('/api/portfolio');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch portfolio data: ${response.statusText}`);
+  }
+  return await response.json();
 }
 
 export async function fetchDashboardData(): Promise<Position[]> {

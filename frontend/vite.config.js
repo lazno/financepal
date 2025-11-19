@@ -5,7 +5,7 @@ import Icons from 'unplugin-icons/vite';
 
 export default defineConfig({
   plugins: [
-    tailwindcss(), 
+    tailwindcss(),
     svelte(),
     Icons({
       compiler: 'svelte',
@@ -27,7 +27,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000', // Your Gleam/Wisp server
+        target: 'http://localhost:8080', // Your Gleam/Wisp server
         changeOrigin: true
       }
     }

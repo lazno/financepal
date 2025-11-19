@@ -137,6 +137,7 @@ pub fn calculate_portfolio_value(
           PositionValue(
             symbol: s.symbol,
             name: s.name,
+            instrument_type: s.instrument_type,
             quantity: s.quantity,
             avg_price: avg_price,
             current_price: s.current_price,

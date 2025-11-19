@@ -21,7 +21,7 @@ pub type State {
 }
 
 pub fn start(db: Connection) {
-  actor.new(State(db: db, interval_ms: 10_000, rate_limit_delay_ms: 1000))
+  actor.new(State(db: db, interval_ms: 100_000, rate_limit_delay_ms: 1000))
   |> actor.on_message(handle_message)
   |> actor.start
 }

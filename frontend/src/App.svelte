@@ -2,6 +2,7 @@
   import Layout from './lib/Layout.svelte';
   import Dashboard from './routes/Dashboard.svelte';
   import Drift from './routes/Drift.svelte';
+  import Targets from './routes/Targets.svelte';
   
   let currentPath = $state(window.location.pathname);
   
@@ -23,6 +24,8 @@
     <Dashboard />
   {:else if currentPath === '/drift'}
     <Drift />
+  {:else if currentPath === '/targets'}
+    <Targets />
   {:else}
     <Dashboard />
   {/if}

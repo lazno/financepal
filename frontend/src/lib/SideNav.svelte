@@ -2,6 +2,7 @@
   import { Navigation } from "@skeletonlabs/skeleton-svelte";
   import IconDashboard from "~icons/lucide/layout-dashboard";
   import IconTrending from "~icons/lucide/trending-up";
+  import IconTarget from "~icons/lucide/target";
   import IconPanelClose from "~icons/lucide/panel-left-close";
   import IconPanelOpen from "~icons/lucide/panel-left-open";
   import IconMoreVertical from "~icons/lucide/more-vertical";
@@ -37,6 +38,7 @@
   const navItems = [
     { path: "/", label: "Dashboard", icon: IconDashboard },
     { path: "/drift", label: "Drift Analysis", icon: IconTrending },
+    { path: "/targets", label: "Targets", icon: IconTarget },
   ];
 
   let currentPath = $state(window.location.pathname);

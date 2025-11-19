@@ -2,6 +2,7 @@ import application/types.{type Context}
 import gleam/http
 import rest/resource/directa_sim_resource
 import rest/resource/drift_resource
+import rest/resource/policy_resource
 import rest/resource/portfolio_resource
 import simplifile
 import wisp.{type Request, type Response}
@@ -15,6 +16,7 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
     ["api", "import"] -> handle_import(req, ctx)
     ["api", "portfolio"] -> portfolio_resource.handle_get_portfolio(req, ctx)
     ["api", "drift"] -> drift_resource.handle_get_drift(req, ctx)
+    ["api", "policy"] -> policy_resource.handle_request(req, ctx)
     [] -> serve_index()
     _ -> serve_static(req)
   }

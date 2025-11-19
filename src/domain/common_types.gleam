@@ -221,6 +221,7 @@ pub type PositionValue {
   PositionValue(
     symbol: Symbol,
     name: AssetName,
+    instrument_type: InstrumentType,
     quantity: Quantity,
     avg_price: Price,
     current_price: Price,

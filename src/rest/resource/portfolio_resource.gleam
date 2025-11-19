@@ -1,6 +1,6 @@
 import application/types.{type Context}
 import domain/common_types.{
-  asset_name_value, currency_name, market_value_amount, price_amount,
+  asset_name_value, currency_name, instrument_type_value, market_value_amount, price_amount,
   quantity_shares, symbol_ticker,
 }
 import domain/portfolio
@@ -74,6 +74,7 @@ pub fn handle_get_portfolio(req: Request, ctx: Context) -> Response {
                           json.object([
                             #("symbol", json.string(symbol_ticker(pos.symbol))),
                             #("name", json.string(asset_name_value(pos.name))),
+                            #("instrument_type", json.string(instrument_type_value(pos.instrument_type))),
                             #(
                               "quantity",
                               json.float(quantity_shares(pos.quantity)),

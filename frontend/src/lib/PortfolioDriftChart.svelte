@@ -499,15 +499,15 @@
       // Colors defined in COLORS configuration object at top of file
       // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
-      posGroup
-        .append("text")
-        .attr("x", xScale(pos.current) + (isMobile ? 6 : 10))
-        .attr("y", yPos + barHeight / 2)
-        .attr("dominant-baseline", "middle")
-        .style("fill", COLORS.currentText)
-        .attr("font-size", isMobile ? "11px" : "14px")
-        .attr("font-weight", "700")
-        .text(`${pos.current.toFixed(pos.current < 10 ? 2 : 0)}%`);
+      // posGroup
+      //   .append("text")
+      //   .attr("x", xScale(pos.current) + (isMobile ? 6 : 10))
+      //   .attr("y", yPos + barHeight / 2)
+      //   .attr("dominant-baseline", "middle")
+      //   .style("fill", COLORS.currentText)
+      //   .attr("font-size", isMobile ? "11px" : "14px")
+      //   .attr("font-weight", "700")
+      //   .text(`${pos.current.toFixed(pos.current < 10 ? 2 : 0)}%`);
 
       // ----------------------------------------------------------------------
       // TARGET MARKER (Vertical line showing target allocation)

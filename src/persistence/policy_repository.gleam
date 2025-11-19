@@ -81,6 +81,38 @@ pub fn delete_policy(
   |> result.map_error(fn(e) { db_error("Error deleting policy from db", e) })
 }
 
+pub fn get_first_policy(
+  conn: sqlight.Connection,
+) -> Result(Policy, TransactionError(e)) {
+  use policies <- result.try(list_policies(conn))
+  case policies {
+    [policy, ..] -> Ok(policy)
+    [] -> Error(db_utils.DbError("No policy found"))
+  }
+}
+
+pub fn update_policy(
+  conn: sqlight.Connection,
+  policy: Policy,
+) -> Result(Nil, TransactionError(e)) {
+  let sql = "UPDATE policy SET targets = ?, sensitivity = ? WHERE id = ?"
+  let targets_json = target_to_json(policy.targets)
+  let sensitivity_json = sensitivity_to_json(policy.sensitivity)
+
+  sqlight.query(
+    sql,
+    conn,
+    [
+      sqlight.text(targets_json),
+      sqlight.text(sensitivity_json),
+      sqlight.text(policy_id_value(policy.id)),
+    ],
+    decode.success(Nil),
+  )
+  |> result.replace(Nil)
+  |> result.map_error(fn(e) { db_error("Error updating policy", e) })
+}
+
 // Helper functions
 
 pub fn target_to_json(target: PolicyTarget) -> String {
