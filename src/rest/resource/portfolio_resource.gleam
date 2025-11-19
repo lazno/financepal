@@ -72,10 +72,7 @@ pub fn handle_get_portfolio(req: Request, ctx: Context) -> Response {
                       json.preprocessed_array(
                         list.map(currency_total.position_values, fn(pos) {
                           json.object([
-                            #(
-                              "symbol",
-                              json.string(symbol_ticker(pos.symbol)),
-                            ),
+                            #("symbol", json.string(symbol_ticker(pos.symbol))),
                             #(
                               "quantity",
                               json.float(quantity_shares(pos.quantity)),

@@ -119,12 +119,12 @@ fn sensitivity_to_json(sensitivity: PolicySensitivity) -> String {
 }
 
 fn decode_policy() -> decode.Decoder(Policy) {
-  use id <- decode.field("id", decode.string)
-  use name <- decode.field("name", decode.string)
-  use targets_json <- decode.field("targets", decode.string)
-  use sensitivity_json <- decode.field("sensitivity", decode.string)
-  use min_trade_value_float <- decode.field("min_trade_value", decode.float)
-  use turnover_cap_float <- decode.field("turnover_cap_bps", decode.int)
+  use id <- decode.field(0, decode.string)
+  use name <- decode.field(1, decode.string)
+  use targets_json <- decode.field(2, decode.string)
+  use sensitivity_json <- decode.field(3, decode.string)
+  use min_trade_value_float <- decode.field(4, decode.float)
+  use turnover_cap_float <- decode.field(5, decode.int)
 
   let policy_id = policy_id(id)
 

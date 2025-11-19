@@ -15,12 +15,12 @@ pub fn get_latest_price_data(
   conn: sqlight.Connection,
 ) -> Result(List(PriceData), String) {
   let sql =
-    "SELECT symbol, price, currency, fetched_at
+    "SELECT isin, price, currency, fetched_at
     FROM prices
-    WHERE (symbol, fetched_at) IN (
-      SELECT symbol, MAX(fetched_at)
+    WHERE (isin, fetched_at) IN (
+      SELECT isin, MAX(fetched_at)
       FROM prices
-      GROUP BY symbol
+      GROUP BY isin 
     )"
 
   sqlight.query(sql, on: conn, with: [], expecting: price_data_decoder())

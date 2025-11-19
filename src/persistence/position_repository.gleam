@@ -63,10 +63,9 @@ pub fn get_all_positions(
   conn: sqlight.Connection,
 ) -> Result(List(Position), String) {
   let sql =
-    "SELECT p.isin, p.quantity
-     FROM positions p
-     LEFT JOIN asset_registry a ON p.isin = a.isin
-     ORDER BY a.symbol ASC"
+    "SELECT isin, quantity
+     FROM positions
+     ORDER BY isin ASC"
 
   sqlight.query(sql, on: conn, with: [], expecting: position_decoder())
   |> result.map_error(fn(e) {
@@ -75,8 +74,8 @@ pub fn get_all_positions(
 }
 
 fn position_decoder() -> decode.Decoder(Position) {
-  use isin_str <- decode.field(1, decode.string)
-  use quantity_float <- decode.field(4, decode.float)
+  use isin_str <- decode.field(0, decode.string)
+  use quantity_float <- decode.field(1, decode.float)
 
   // Create domain objects
   let isin = isin(isin_str)

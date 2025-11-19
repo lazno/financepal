@@ -97,11 +97,7 @@
    * @param upperBound - Upper band percentage
    * @returns 'in' | 'under' | 'over'
    */
-  function getStatus(
-    current: number,
-    lowerBound: number,
-    upperBound: number,
-  ) {
+  function getStatus(current: number, lowerBound: number, upperBound: number) {
     if (current < lowerBound) return "under";
     if (current > upperBound) return "over";
     return "in";
@@ -228,11 +224,7 @@
       const bandUpperVal = pos.upperBound;
 
       // Get status
-      const status = getStatus(
-        pos.current,
-        pos.lowerBound,
-        pos.upperBound,
-      );
+      const status = getStatus(pos.current, pos.lowerBound, pos.upperBound);
 
       // Build tooltip content
       const labelColor = "#9ca3af";
@@ -406,12 +398,7 @@
       const bandUpper = pos.upperBound;
 
       // Get status for this position
-      const status = getStatus(
-        pos.current,
-        pos.target,
-        pos.lowerBound,
-        pos.upperBound,
-      );
+      const status = getStatus(pos.current, pos.lowerBound, pos.upperBound);
 
       // Create a group for this position
       const posGroup = g
