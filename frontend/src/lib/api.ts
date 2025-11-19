@@ -42,8 +42,8 @@ const mockPortfolioPositions: Position[] = [
 const mockDriftPositions: DriftPosition[] = [
   {
     asset: 'Main Position',
-    target: 80,
-    current: 81,
+    target: 40,
+    current: 41,
     bandLower: 0.05,
     bandUpper: 0.05
   },

@@ -37,9 +37,7 @@
   // COMPONENT PROPS
   // ============================================================================
 
-  let {
-    positions = $bindable([])
-  }: Props = $props();
+  let { positions = $bindable([]) }: Props = $props();
 
   // ============================================================================
   // COMPONENT STATE
@@ -120,21 +118,32 @@
     if (chartContainer) {
       // Get the actual width of the parent container
       const rect = chartContainer.getBoundingClientRect();
-      containerWidth = rect.width || chartContainer.clientWidth || chartContainer.offsetWidth;
-      
+      containerWidth =
+        rect.width || chartContainer.clientWidth || chartContainer.offsetWidth;
+
       // If still 0, try the parent element
       if (containerWidth === 0 && chartContainer.parentElement) {
         containerWidth = chartContainer.parentElement.clientWidth;
       }
-      
+
       // Responsive height: taller on mobile, shorter on desktop
-      const baseHeight = window.innerWidth < 640 ? 800 : window.innerWidth < 1024 ? 600 : 500;
-      containerHeight = Math.max(400, Math.min(baseHeight, positions.length * 80));
+      const baseHeight =
+        window.innerWidth < 640 ? 800 : window.innerWidth < 1024 ? 600 : 500;
+      containerHeight = Math.max(
+        400,
+        Math.min(baseHeight, positions.length * 80),
+      );
     }
   }
 
   function renderChart() {
-    if (!chartContainer || !tooltip || positions.length === 0 || containerWidth === 0) return;
+    if (
+      !chartContainer ||
+      !tooltip ||
+      positions.length === 0 ||
+      containerWidth === 0
+    )
+      return;
 
     // Clear any existing chart
     d3.select(chartContainer).selectAll("*").remove();
@@ -159,12 +168,125 @@
     };
 
     // ------------------------------------------------------------------------
+    // INTERACTION HELPERS
+    // ------------------------------------------------------------------------
+
+    function updateTooltipPosition(event: any) {
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Calculate initial position (offset from cursor/touch)
+      let left = event.clientX + 10;
+      let top = event.clientY + 15;
+
+      // 1. Horizontal Positioning Strategy
+      // Try placing to the right. If it overflows, flip to the left.
+      if (left + tooltipRect.width > viewportWidth - 10) {
+        left = event.clientX - tooltipRect.width - 10;
+      }
+
+      // 2. Vertical Positioning Strategy
+      // Try placing below. If it overflows, flip to above.
+      if (top + tooltipRect.height > viewportHeight - 10) {
+        top = event.clientY - tooltipRect.height - 10;
+      }
+
+      // 3. Hard Clamping (The "Safety Net")
+      // Ensure the tooltip NEVER goes off-screen, regardless of the above logic.
+      // This handles cases where the tooltip is wider than the available space on either side.
+
+      // Clamp Left: Ensure it's at least 10px from the left edge
+      left = Math.max(10, left);
+
+      // Clamp Right: Ensure it's at least 10px from the right edge
+      // (We prioritize the left clamp if the screen is extremely narrow)
+      if (left + tooltipRect.width > viewportWidth - 10) {
+        left = Math.max(10, viewportWidth - tooltipRect.width - 10);
+      }
+
+      // Clamp Top: Ensure it's at least 10px from the top edge
+      top = Math.max(10, top);
+
+      // Clamp Bottom: Ensure it's at least 10px from the bottom edge
+      if (top + tooltipRect.height > viewportHeight - 10) {
+        top = Math.max(10, viewportHeight - tooltipRect.height - 10);
+      }
+
+      tooltip.style.left = left + "px";
+      tooltip.style.top = top + "px";
+    }
+
+    function showTooltip(event: any, pos: Position, element: any) {
+      // Increase bar opacity
+      d3.select(element).select(".allocation-bar").attr("opacity", 1);
+
+      // Calculate drift metrics
+      const drift = pos.current - pos.target;
+      const driftPercent = ((drift / pos.target) * 100).toFixed(1);
+      const driftSign = drift > 0 ? "+" : "";
+
+      // Calculate band boundaries for display
+      const bandLowerVal = pos.target * (1 - pos.bandLower);
+      const bandUpperVal = pos.target * (1 + pos.bandUpper);
+
+      // Get status
+      const status = getStatus(
+        pos.current,
+        pos.target,
+        pos.bandLower,
+        pos.bandUpper,
+      );
+
+      // Build tooltip content
+      const labelColor = "#9ca3af";
+      const textColor = "#f3f4f6";
+
+      tooltip.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px; color: ${textColor};">${pos.asset}</div>
+        <div style="display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 13px;">
+          <span style="color: ${labelColor};">Target:</span>
+          <span style="font-weight: 500; color: ${textColor};">${pos.target.toFixed(2)}%</span>
+          
+          <span style="color: ${labelColor};">Current:</span>
+          <span style="font-weight: 500; color: ${textColor};">${pos.current.toFixed(2)}%</span>
+          
+          <span style="color: ${labelColor};">Drift:</span>
+          <span style="font-weight: 600; color: ${drift > 0 ? COLORS.barOver : drift < 0 ? COLORS.barUnder : COLORS.barInBand};">
+            ${driftSign}${drift.toFixed(2)}% (${driftSign}${driftPercent}%)
+          </span>
+          
+          <span style="color: ${labelColor};">Band:</span>
+          <span style="font-weight: 500; color: ${COLORS.bandLine};">${bandLowerVal.toFixed(2)}% - ${bandUpperVal.toFixed(2)}% (-${(pos.bandLower * 100).toFixed(0)}% / +${(pos.bandUpper * 100).toFixed(0)}%)</span>
+          
+          <span style="color: ${labelColor};">Status:</span>
+          <span style="font-weight: 600; color: ${status === "in" ? COLORS.barInBand : status === "under" ? COLORS.barUnder : COLORS.barOver};">
+            ${status === "in" ? "✓ In Band" : status === "under" ? "↓ Under" : "↑ Over"}
+          </span>
+        </div>
+      `;
+
+      tooltip.style.display = "block";
+      updateTooltipPosition(event);
+    }
+
+    function hideTooltip(element: any) {
+      if (element) {
+        d3.select(element).select(".allocation-bar").attr("opacity", 0.85);
+      } else {
+        // Reset all bars if no specific element provided (for background click)
+        d3.selectAll(".allocation-bar").attr("opacity", 0.85);
+      }
+      tooltip.style.display = "none";
+    }
+
+    // ------------------------------------------------------------------------
     // LAYOUT CONFIGURATION - Responsive margins
     // Adjust these values to change spacing and positioning
     // ------------------------------------------------------------------------
     const isMobile = containerWidth < 640;
     const isTablet = containerWidth >= 640 && containerWidth < 1024;
-    
+
     const margin = {
       top: isMobile ? 40 : 60,
       right: isMobile ? 60 : 80,
@@ -183,7 +305,10 @@
       .attr("width", containerWidth)
       .attr("height", containerHeight)
       .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .on("click", () => {
+        hideTooltip(null);
+      });
 
     const g = svg
       .append("g")
@@ -192,11 +317,11 @@
     // ------------------------------------------------------------------------
     // BAR HEIGHT CALCULATION
     // Bars are scaled based on current allocation for visual hierarchy
-    // 
+    //
     // ADJUST THESE VALUES TO CONTROL BAR HEIGHT EXAGGERATION:
     // - minBarHeight: Smaller values = more dramatic difference (try 8-20)
     // - maxBarHeight multiplier: Larger values = taller max bars (try 0.8-1.0)
-    // 
+    //
     // Examples:
     //   minBarHeight=15, multiplier=0.8  -> moderate exaggeration
     //   minBarHeight=8,  multiplier=0.9  -> strong exaggeration
@@ -214,9 +339,11 @@
     // ------------------------------------------------------------------------
     // SCALES
     // ------------------------------------------------------------------------
-    
+
     // Sort positions by current allocation (descending) for visual hierarchy
-    const sortedPositions = [...positions].sort((a, b) => b.current - a.current);
+    const sortedPositions = [...positions].sort(
+      (a, b) => b.current - a.current,
+    );
 
     // Y-axis: Position each asset
     const yScale = d3
@@ -232,12 +359,12 @@
         return Math.max(d.current, d.target * (1 + d.bandUpper));
       }) || 100;
 
-    // Ensure domain goes to at least 100% to show the 100% tick mark
-    const domainMax = Math.max(maxPercent * 1.15, 100);
+    // Ensure domain goes to at least 10% to avoid extreme zoom on tiny portfolios
+    const domainMax = Math.max(maxPercent * 1.15, 10);
 
     const xScale = d3
       .scaleLinear()
-      .domain([0, domainMax]) // Add padding on the right, ensure 100% is included
+      .domain([0, domainMax]) // Add padding on the right
       .range([0, chartWidth]);
 
     // ------------------------------------------------------------------------
@@ -327,44 +454,59 @@
       // Colors defined in COLORS configuration object at top of file
       // Use .style() not .attr() for CSS custom properties to work
       // ----------------------------------------------------------------------
+      const strokeWidth = 1.5;
+
       posGroup
         .append("line")
         .attr("x1", xScale(bandLower))
         .attr("x2", xScale(bandLower))
-        .attr("y1", yPos - 5)
+        .attr("y1", yPos)
         .attr("y2", yPos + barHeight + 3)
         .style("stroke", COLORS.bandLine)
-        .attr("stroke-width", 1.5) // Line thickness
+        .attr("stroke-width", strokeWidth) // Line thickness
         .attr("stroke-dasharray", "5,3"); // Dash pattern: 5px dash, 3px gap
 
       posGroup
         .append("line")
         .attr("x1", xScale(bandUpper))
         .attr("x2", xScale(bandUpper))
-        .attr("y1", yPos - 5)
+        .attr("y1", yPos)
         .attr("y2", yPos + barHeight + 3)
         .style("stroke", COLORS.bandLine)
-        .attr("stroke-width", 1.5)
+        .attr("stroke-width", strokeWidth)
         .attr("stroke-dasharray", "5,3");
 
       // ----------------------------------------------------------------------
-      // BAND BOUNDARY DOTS (Circles at top of band lines)
-      // ADJUST: 'r' attribute to change dot size
-      // Colors defined in COLORS configuration object at top of file
-      // Use .style() not .attr() for CSS custom properties to work
+      // BAND BOUNDARY MARKERS (Triangles)
+      // Replaced dots with "half-triangles" pointing inwards/downwards
+      // Lower band: Triangle pointing left
+      // Upper band: Triangle pointing right
       // ----------------------------------------------------------------------
+
+      // Lower Band Triangle (Points Left)
+      // Path: Start at (x, y-5), go down-left, go up, close
+      // Offset by strokeWidth/2 to align with the outer edge of the line
+      const triangleWidth = 5;
+      const triangleHeight = 7;
+      const lowerX = xScale(bandLower) + strokeWidth / 2;
       posGroup
-        .append("circle")
-        .attr("cx", xScale(bandLower))
-        .attr("cy", yPos - 5)
-        .attr("r", 5) // Dot radius in pixels
+        .append("path")
+        .attr(
+          "d",
+          `M ${lowerX} ${yPos - 5} L ${lowerX - triangleWidth} ${yPos - 5} L ${lowerX} ${yPos - 5 + triangleHeight} Z`,
+        )
         .style("fill", COLORS.bandDot);
 
+      // Upper Band Triangle (Points Right)
+      // Path: Start at (x, y-5), go down-right, go up, close
+      // Offset by strokeWidth/2 to align with the outer edge of the line
+      const upperX = xScale(bandUpper) - strokeWidth / 2;
       posGroup
-        .append("circle")
-        .attr("cx", xScale(bandUpper))
-        .attr("cy", yPos - 5)
-        .attr("r", 5)
+        .append("path")
+        .attr(
+          "d",
+          `M ${upperX} ${yPos - 5} L ${upperX + triangleWidth} ${yPos - 5} L ${upperX} ${yPos - 5 + triangleHeight} Z`,
+        )
         .style("fill", COLORS.bandDot);
 
       // ----------------------------------------------------------------------
@@ -400,102 +542,23 @@
         .attr("stroke-width", 2);
 
       // ----------------------------------------------------------------------
-      // HOVER INTERACTIONS
-      // Show tooltip and highlight bar on hover
+      // HOVER & CLICK INTERACTIONS
+      // Show tooltip and highlight bar on hover (Desktop) or click (Mobile)
       // ----------------------------------------------------------------------
       posGroup
         .on("mouseenter", function (event) {
-          // Increase bar opacity on hover
-          d3.select(this).select(".allocation-bar").attr("opacity", 1);
-
-          // Calculate drift metrics
-          const drift = pos.current - pos.target;
-          const driftPercent = ((drift / pos.target) * 100).toFixed(1);
-          const driftSign = drift > 0 ? "+" : "";
-
-          // Build tooltip content with asymmetric band display
-          // Get colors from COLORS object
-          const labelColor = "#9ca3af";
-          const textColor = "#f3f4f6";
-
-          tooltip.innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 8px; font-size: 15px; color: ${textColor};">${pos.asset}</div>
-            <div style="display: grid; grid-template-columns: auto auto; gap: 6px 16px; font-size: 13px;">
-              <span style="color: ${labelColor};">Target:</span>
-              <span style="font-weight: 500; color: ${textColor};">${pos.target.toFixed(2)}%</span>
-              
-              <span style="color: ${labelColor};">Current:</span>
-              <span style="font-weight: 500; color: ${textColor};">${pos.current.toFixed(2)}%</span>
-              
-              <span style="color: ${labelColor};">Drift:</span>
-              <span style="font-weight: 600; color: ${drift > 0 ? COLORS.barOver : drift < 0 ? COLORS.barUnder : COLORS.barInBand};">
-                ${driftSign}${drift.toFixed(2)}% (${driftSign}${driftPercent}%)
-              </span>
-              
-              <span style="color: ${labelColor};">Band:</span>
-              <span style="font-weight: 500; color: ${COLORS.bandLine};">${bandLower.toFixed(2)}% - ${bandUpper.toFixed(2)}% (-${(pos.bandLower * 100).toFixed(0)}% / +${(pos.bandUpper * 100).toFixed(0)}%)</span>
-              
-              <span style="color: ${labelColor};">Status:</span>
-              <span style="font-weight: 600; color: ${status === "in" ? COLORS.barInBand : status === "under" ? COLORS.barUnder : COLORS.barOver};">
-                ${status === "in" ? "✓ In Band" : status === "under" ? "↓ Under" : "↑ Over"}
-              </span>
-            </div>
-          `;
-
-          // Position and show tooltip with smart viewport-aware placement
-          // Uses fixed positioning to prevent cutoff
-          tooltip.style.display = "block";
-
-          // Get tooltip dimensions after making it visible
-          const tooltipRect = tooltip.getBoundingClientRect();
-          const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight;
-
-          // Calculate initial position
-          let left = event.clientX + 10;
-          let top = event.clientY + 15;
-
-          // Adjust horizontal position if tooltip would overflow right edge
-          if (left + tooltipRect.width > viewportWidth - 10) {
-            left = event.clientX - tooltipRect.width - 10;
-          }
-
-          // Adjust vertical position if tooltip would overflow bottom edge
-          if (top + tooltipRect.height > viewportHeight - 10) {
-            top = event.clientY - tooltipRect.height - 10;
-          }
-
-          tooltip.style.left = left + "px";
-          tooltip.style.top = top + "px";
+          showTooltip(event, pos, this);
         })
         .on("mousemove", function (event) {
-          // Update tooltip position as mouse moves with smart viewport-aware placement
-          const tooltipRect = tooltip.getBoundingClientRect();
-          const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight;
-
-          // Calculate initial position
-          let left = event.clientX + 10;
-          let top = event.clientY + 15;
-
-          // Adjust horizontal position if tooltip would overflow right edge
-          if (left + tooltipRect.width > viewportWidth - 10) {
-            left = event.clientX - tooltipRect.width - 10;
-          }
-
-          // Adjust vertical position if tooltip would overflow bottom edge
-          if (top + tooltipRect.height > viewportHeight - 10) {
-            top = event.clientY - tooltipRect.height - 10;
-          }
-
-          tooltip.style.left = left + "px";
-          tooltip.style.top = top + "px";
+          updateTooltipPosition(event);
         })
         .on("mouseleave", function () {
-          // Reset bar opacity and hide tooltip
-          d3.select(this).select(".allocation-bar").attr("opacity", 0.85);
-
-          tooltip.style.display = "none";
+          hideTooltip(this);
+        })
+        .on("click", function (event) {
+          // Stop propagation so the background click handler doesn't immediately hide it
+          event.stopPropagation();
+          showTooltip(event, pos, this);
         });
     });
 
@@ -574,8 +637,8 @@
       updateDimensions();
       renderChart();
     };
-    
-    window.addEventListener('resize', handleResize);
+
+    window.addEventListener("resize", handleResize);
 
     // Watch for theme changes and re-render
     const observer = new MutationObserver((mutations) => {
@@ -595,7 +658,7 @@
     });
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       observer.disconnect();
     };
   });
@@ -660,6 +723,7 @@
       0 10px 15px -3px rgba(0, 0, 0, 0.3),
       0 4px 6px -2px rgba(0, 0, 0, 0.2);
     min-width: 220px;
+    max-width: 90vw; /* Ensure it never exceeds screen width on mobile */
   }
 
   /* Smooth transitions for hover effects */
