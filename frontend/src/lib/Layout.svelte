@@ -1,7 +1,5 @@
 <script lang="ts">
-  import { AppBar, Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-  import IconSun from '~icons/lucide/sun';
-  import IconMoon from '~icons/lucide/moon';
+  import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
   import IconMenu from '~icons/lucide/menu';
   import IconX from '~icons/lucide/x';
   import SideNav from './SideNav.svelte';
@@ -13,16 +11,6 @@
   let { children }: Props = $props();
   let sideNavCollapsed = $state(false);
   let mobileDrawerOpen = $state(false);
-  
-  // Theme toggle function - toggles between light and dark mode
-  function toggleTheme() {
-    const html = document.documentElement;
-    const currentMode = html.getAttribute('data-mode');
-    const newMode = currentMode === 'dark' ? 'light' : 'dark';
-    
-    html.setAttribute('data-mode', newMode);
-    localStorage.setItem('theme', newMode);
-  }
   
   // Handle navigation in mobile - close drawer
   function handleMobileNavigation() {
@@ -93,29 +81,16 @@
   </Dialog>
   
   <div class="flex-1 flex flex-col min-w-0">
-    <AppBar>
-      <AppBar.Toolbar class="grid-cols-[auto_1fr_auto] lg:grid-cols-[1fr_auto]">
-        <!-- Hamburger menu button: visible on mobile only -->
-        <button 
-          class="btn-icon variant-ghost lg:hidden" 
-          onclick={() => mobileDrawerOpen = true}
-          aria-label="Open menu"
-        >
-          <IconMenu class="w-6 h-6" />
-        </button>
-        
-        <AppBar.Headline class="lg:col-span-1">
-          <h1 class="h1 text-lg md:text-xl lg:text-2xl">FinancePal</h1>
-        </AppBar.Headline>
-        
-        <AppBar.Trail>
-          <button class="btn-icon variant-ghost" onclick={toggleTheme} aria-label="Toggle theme">
-            <IconSun class="w-5 h-5 dark:hidden" />
-            <IconMoon class="w-5 h-5 hidden dark:block" />
-          </button>
-        </AppBar.Trail>
-      </AppBar.Toolbar>
-    </AppBar>
+    <!-- Mobile Menu Button -->
+    <div class="lg:hidden p-4 pb-0">
+      <button 
+        class="btn-icon variant-ghost" 
+        onclick={() => mobileDrawerOpen = true}
+        aria-label="Open menu"
+      >
+        <IconMenu class="w-6 h-6" />
+      </button>
+    </div>
     
     <main class="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 lg:p-8">
       {@render children?.()}

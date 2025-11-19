@@ -32,6 +32,8 @@ pub type DriftAnalysis {
     target_weight_bps: Int,
     status: DriftStatus,
     delta_to_edge_bps: Int,
+    lower_bound_bps: Int,
+    upper_bound_bps: Int,
     // percentage points from nearest boundary
   )
 }
@@ -400,6 +402,8 @@ pub fn detect_drift(
           target_weight_bps: target_weight,
           status: status,
           delta_to_edge_bps: delta_to_edge,
+          lower_bound_bps: lower_bound,
+          upper_bound_bps: upper_bound,
         )
 
       Ok([analysis, ..analyses_list])
