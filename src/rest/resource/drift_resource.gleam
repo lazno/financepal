@@ -81,22 +81,10 @@ fn drift_report_to_json(report: DriftReport) -> json.Json {
 fn drift_analysis_to_json(analysis: DriftAnalysis) -> json.Json {
   json.object([
     #("asset", json.string(policy_target_key_value(analysis.target_key))),
-    #(
-      "target",
-      json.float(int.to_float(analysis.target_weight_bps) /. 100.0),
-    ),
-    #(
-      "current",
-      json.float(int.to_float(analysis.current_weight_bps) /. 100.0),
-    ),
-    #(
-      "bandLower",
-      json.float(int.to_float(analysis.lower_bound_bps) /. 100.0),
-    ),
-    #(
-      "bandUpper",
-      json.float(int.to_float(analysis.upper_bound_bps) /. 100.0),
-    ),
+    #("target", json.float(int.to_float(analysis.target_weight_bps) /. 100.0)),
+    #("current", json.float(int.to_float(analysis.current_weight_bps) /. 100.0)),
+    #("bandLower", json.float(int.to_float(analysis.lower_bound_bps) /. 100.0)),
+    #("bandUpper", json.float(int.to_float(analysis.upper_bound_bps) /. 100.0)),
     #("status", json.string(drift_status_to_string(analysis.status))),
   ])
 }

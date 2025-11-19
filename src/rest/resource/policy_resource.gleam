@@ -1,10 +1,10 @@
 import application/types.{type Context}
 import domain/policy_types.{
-  InstrumentType, Policy, allocation, allocation_bps, min_trade_value,
-  policy_id, policy_id_value, policy_name, policy_sensitivity,
-  policy_sensitivity_cap_bps, policy_sensitivity_floor_bps,
-  policy_sensitivity_rel_bps, policy_target, policy_target_key,
-  policy_target_key_value, policy_target_weights, turnover_cap,
+  InstrumentType, Policy, allocation, allocation_bps, min_trade_value, policy_id,
+  policy_id_value, policy_name, policy_sensitivity, policy_sensitivity_cap_bps,
+  policy_sensitivity_floor_bps, policy_sensitivity_rel_bps, policy_target,
+  policy_target_key, policy_target_key_value, policy_target_weights,
+  turnover_cap,
 }
 import gleam/dict
 import gleam/dynamic/decode
@@ -73,8 +73,7 @@ fn handle_get_policy(ctx: Context) -> Response {
         // Return 404 if no policy exists
         Error(wisp.not_found())
       }
-      Error(e) ->
-        panic as { "Failed to fetch policy: " <> string.inspect(e) }
+      Error(e) -> panic as { "Failed to fetch policy: " <> string.inspect(e) }
     }
   }
 
