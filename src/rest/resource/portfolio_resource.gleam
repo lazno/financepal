@@ -1,7 +1,7 @@
 import application/types.{type Context}
 import domain/common_types.{
-  currency_name, market_value_amount, price_amount, quantity_shares,
-  symbol_ticker,
+  asset_name_value, currency_name, market_value_amount, price_amount,
+  quantity_shares, symbol_ticker,
 }
 import domain/portfolio
 import gleam/dict
@@ -73,6 +73,7 @@ pub fn handle_get_portfolio(req: Request, ctx: Context) -> Response {
                         list.map(currency_total.position_values, fn(pos) {
                           json.object([
                             #("symbol", json.string(symbol_ticker(pos.symbol))),
+                            #("name", json.string(asset_name_value(pos.name))),
                             #(
                               "quantity",
                               json.float(quantity_shares(pos.quantity)),

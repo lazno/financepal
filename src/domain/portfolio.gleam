@@ -1,9 +1,9 @@
 import domain/common_types.{
-  type Asset, type Currency, type InstrumentType, type Isin, type MarketValue,
-  type PortfolioValue, type Price, type PriceData, type Quantity, type Symbol,
-  CurrencyTotal, PortfolioValue, PositionValue, UnrealizedProfit, cost_basis,
-  isin_value, market_value, market_value_amount, price, price_amount,
-  quantity_shares,
+  type Asset, type AssetName, type Currency, type InstrumentType, type Isin,
+  type MarketValue, type PortfolioValue, type Price, type PriceData,
+  type Quantity, type Symbol, CurrencyTotal, PortfolioValue, PositionValue,
+  UnrealizedProfit, cost_basis, isin_value, market_value, market_value_amount,
+  price, price_amount, quantity_shares,
 }
 import domain/position_types.{type Position}
 import gleam/dict
@@ -14,6 +14,7 @@ pub type PositionSnapshot {
   PositionSnapshot(
     isin: Isin,
     symbol: Symbol,
+    name: AssetName,
     instrument_type: InstrumentType,
     quantity: Quantity,
     current_price: Price,
@@ -63,7 +64,7 @@ fn process_positions(
           // No price data available
           process_positions(rest, price_map, asset_map, snapshots, [
             position.isin,
-            ..missing,
+            ..missing
           ])
         }
 
@@ -74,7 +75,7 @@ fn process_positions(
               // For now, skip this position and log as missing
               process_positions(rest, price_map, asset_map, snapshots, [
                 position.isin,
-                ..missing,
+                ..missing
               ])
             }
 
@@ -86,6 +87,7 @@ fn process_positions(
                 PositionSnapshot(
                   isin: position.isin,
                   symbol: asset.symbol,
+                  name: asset.name,
                   instrument_type: asset.instrument_type,
                   quantity: position.quantity,
                   current_price: price_data.price,
@@ -134,6 +136,7 @@ pub fn calculate_portfolio_value(
 
           PositionValue(
             symbol: s.symbol,
+            name: s.name,
             quantity: s.quantity,
             avg_price: avg_price,
             current_price: s.current_price,

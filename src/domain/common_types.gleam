@@ -220,6 +220,7 @@ pub type UnrealizedProfit {
 pub type PositionValue {
   PositionValue(
     symbol: Symbol,
+    name: AssetName,
     quantity: Quantity,
     avg_price: Price,
     current_price: Price,

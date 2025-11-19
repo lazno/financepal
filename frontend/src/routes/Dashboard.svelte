@@ -13,7 +13,8 @@
   onMount(async () => {
     try {
       loading = true;
-      positions = await fetchDashboardData();
+      const data = await fetchDashboardData();
+      positions = data.sort((a, b) => b.value - a.value);
       error = null;
     } catch (err) {
       error =

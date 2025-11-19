@@ -25,6 +25,7 @@ interface CurrencyTotal {
 
 interface PositionValue {
   symbol: string;
+  name: string;
   quantity: number;
   price: number;
   market_value: number;
@@ -45,21 +46,21 @@ export async function fetchDashboardData(): Promise<Position[]> {
     throw new Error(`Failed to fetch portfolio data: ${response.statusText}`);
   }
   const data: PortfolioResponse = await response.json();
-  
+
   const positions: Position[] = [];
-  
+
   for (const currencyEntry of data.positions_by_currency) {
     for (const currency in currencyEntry) {
       const total = currencyEntry[currency];
       for (const pos of total.positions) {
         positions.push({
-          label: pos.symbol,
+          label: pos.name,
           value: pos.market_value
         });
       }
     }
   }
-  
+
   // Sort by value descending
   return positions.sort((a, b) => b.value - a.value);
 }
@@ -70,7 +71,7 @@ export async function fetchDriftData(): Promise<DriftPosition[]> {
     throw new Error(`Failed to fetch drift data: ${response.statusText}`);
   }
   const data: DriftAnalysisResponse[] = await response.json();
-  
+
   return data.map(item => ({
     asset: item.asset,
     target: item.target,
