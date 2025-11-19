@@ -29,11 +29,8 @@
     
     let inBand = 0, under = 0, over = 0;
     driftPositions.forEach(pos => {
-      const lower = pos.target * (1 - pos.bandLower);
-      const upper = pos.target * (1 + pos.bandUpper);
-      
-      if (pos.current < lower) under++;
-      else if (pos.current > upper) over++;
+      if (pos.current < pos.lowerBound) under++;
+      else if (pos.current > pos.upperBound) over++;
       else inBand++;
     });
     

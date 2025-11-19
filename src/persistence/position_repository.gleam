@@ -63,9 +63,10 @@ pub fn get_all_positions(
   conn: sqlight.Connection,
 ) -> Result(List(Position), String) {
   let sql =
-    "SELECT isin, quantity
-     FROM positions 
-     ORDER BY symbol ASC"
+    "SELECT p.isin, p.quantity
+     FROM positions p
+     LEFT JOIN asset_registry a ON p.isin = a.isin
+     ORDER BY a.symbol ASC"
 
   sqlight.query(sql, on: conn, with: [], expecting: position_decoder())
   |> result.map_error(fn(e) {

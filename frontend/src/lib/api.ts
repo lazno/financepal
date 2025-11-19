@@ -9,75 +9,74 @@ export interface DriftPosition {
   asset: string;
   target: number;
   current: number;
-  bandLower: number;
-  bandUpper: number;
+  lowerBound: number;
+  upperBound: number;
+  status: 'in_band' | 'out_of_band';
 }
 
-const mockPortfolioPositions: Position[] = [
-  { label: 'VWCE ETF', value: 35000 },
-  { label: 'Bitcoin', value: 20000 },
-  { label: 'Apple', value: 15000 },
-  { label: 'Microsoft', value: 12000 },
-  { label: 'Google', value: 8000 },
-  { label: 'Amazon', value: 6000 },
-  { label: 'Ethereum', value: 3000 },
-  { label: 'Apple', value: 15000 },
-  { label: 'Apple', value: 15000 },
-  { label: 'Apple', value: 15000 },
-  { label: 'Microsoft', value: 12000 },
-  { label: 'Google', value: 8000 },
-  { label: 'Amazon', value: 6000 },
-  { label: 'Ethereum', value: 3000 },
-  { label: 'Microsoft', value: 12000 },
-  { label: 'Google', value: 8000 },
-  { label: 'Amazon', value: 6000 },
-  { label: 'Ethereum', value: 3000 },
-  { label: 'Microsoft', value: 12000 },
-  { label: 'Google', value: 8000 },
-  { label: 'Amazon', value: 6000 },
-  { label: 'Ethereum', value: 3000 },
-  { label: 'Cash', value: 1000 }
-];
+interface PortfolioResponse {
+  positions_by_currency: Record<string, CurrencyTotal>[];
+}
 
-const mockDriftPositions: DriftPosition[] = [
-  {
-    asset: 'Main Position',
-    target: 40,
-    current: 41,
-    bandLower: 0.05,
-    bandUpper: 0.05
-  },
-  {
-    asset: 'Secondary',
-    target: 15,
-    current: 17,
-    bandLower: 0.10,
-    bandUpper: 0.10
-  },
-  {
-    asset: 'Small Holding',
-    target: 4,
-    current: 3.2,
-    bandLower: 0.15,
-    bandUpper: 0.15
-  },
-  {
-    asset: 'Tiny Position',
-    target: 1,
-    current: 0.95,
-    bandLower: 0.5,
-    bandUpper: 0.5
-  }
-];
+interface CurrencyTotal {
+  total_market_value: number;
+  positions: PositionValue[];
+}
+
+interface PositionValue {
+  symbol: string;
+  quantity: number;
+  price: number;
+  market_value: number;
+}
+
+interface DriftAnalysisResponse {
+  asset: string;
+  target: number;
+  current: number;
+  bandLower: number;
+  bandUpper: number;
+  status: string;
+}
 
 export async function fetchDashboardData(): Promise<Position[]> {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 5));
-  return mockPortfolioPositions;
+  const response = await fetch('/api/portfolio');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch portfolio data: ${response.statusText}`);
+  }
+  const data: PortfolioResponse = await response.json();
+  
+  const positions: Position[] = [];
+  
+  for (const currencyEntry of data.positions_by_currency) {
+    for (const currency in currencyEntry) {
+      const total = currencyEntry[currency];
+      for (const pos of total.positions) {
+        positions.push({
+          label: pos.symbol,
+          value: pos.market_value
+        });
+      }
+    }
+  }
+  
+  // Sort by value descending
+  return positions.sort((a, b) => b.value - a.value);
 }
 
 export async function fetchDriftData(): Promise<DriftPosition[]> {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 5));
-  return mockDriftPositions;
+  const response = await fetch('/api/drift');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch drift data: ${response.statusText}`);
+  }
+  const data: DriftAnalysisResponse[] = await response.json();
+  
+  return data.map(item => ({
+    asset: item.asset,
+    target: item.target,
+    current: item.current,
+    lowerBound: item.bandLower,
+    upperBound: item.bandUpper,
+    status: item.status as 'in_band' | 'out_of_band'
+  }));
 }

@@ -25,8 +25,8 @@
     asset: string;
     target: number;
     current: number;
-    bandLower: number; // Lower band as percentage (e.g., 0.10 for -10%)
-    bandUpper: number; // Upper band as percentage (e.g., 0.15 for +15%)
+    lowerBound: number; // Absolute percentage
+    upperBound: number; // Absolute percentage
   }
 
   interface Props {
@@ -93,20 +93,17 @@
    * Determines if a position is within band, under, or over target
    * @param current - Current allocation percentage
    * @param target - Target allocation percentage
-   * @param bandLower - Lower band percentage (e.g., 0.10 for -10%)
-   * @param bandUpper - Upper band percentage (e.g., 0.15 for +15%)
+   * @param lowerBound - Lower band percentage
+   * @param upperBound - Upper band percentage
    * @returns 'in' | 'under' | 'over'
    */
   function getStatus(
     current: number,
-    target: number,
-    bandLower: number,
-    bandUpper: number,
+    lowerBound: number,
+    upperBound: number,
   ) {
-    const lower = target * (1 - bandLower);
-    const upper = target * (1 + bandUpper);
-    if (current < lower) return "under";
-    if (current > upper) return "over";
+    if (current < lowerBound) return "under";
+    if (current > upperBound) return "over";
     return "in";
   }
 
@@ -227,15 +224,14 @@
       const driftSign = drift > 0 ? "+" : "";
 
       // Calculate band boundaries for display
-      const bandLowerVal = pos.target * (1 - pos.bandLower);
-      const bandUpperVal = pos.target * (1 + pos.bandUpper);
+      const bandLowerVal = pos.lowerBound;
+      const bandUpperVal = pos.upperBound;
 
       // Get status
       const status = getStatus(
         pos.current,
-        pos.target,
-        pos.bandLower,
-        pos.bandUpper,
+        pos.lowerBound,
+        pos.upperBound,
       );
 
       // Build tooltip content
@@ -257,7 +253,7 @@
           </span>
           
           <span style="color: ${labelColor};">Band:</span>
-          <span style="font-weight: 500; color: ${COLORS.bandLine};">${bandLowerVal.toFixed(2)}% - ${bandUpperVal.toFixed(2)}% (-${(pos.bandLower * 100).toFixed(0)}% / +${(pos.bandUpper * 100).toFixed(0)}%)</span>
+          <span style="font-weight: 500; color: ${COLORS.bandLine};">${bandLowerVal.toFixed(2)}% - ${bandUpperVal.toFixed(2)}%</span>
           
           <span style="color: ${labelColor};">Status:</span>
           <span style="font-weight: 600; color: ${status === "in" ? COLORS.barInBand : status === "under" ? COLORS.barUnder : COLORS.barOver};">
@@ -356,7 +352,7 @@
     // Calculate max considering all positions' bands
     const maxPercent =
       d3.max(positions, (d) => {
-        return Math.max(d.current, d.target * (1 + d.bandUpper));
+        return Math.max(d.current, d.target * 1.2); // Add some buffer
       }) || 100;
 
     // Ensure domain goes to at least 10% to avoid extreme zoom on tiny portfolios
@@ -406,15 +402,15 @@
         (yScale(pos.asset) || 0) + (yScale.bandwidth() - barHeight) / 2;
 
       // Calculate band boundaries using position-specific bands
-      const bandLower = pos.target * (1 - pos.bandLower);
-      const bandUpper = pos.target * (1 + pos.bandUpper);
+      const bandLower = pos.lowerBound;
+      const bandUpper = pos.upperBound;
 
       // Get status for this position
       const status = getStatus(
         pos.current,
         pos.target,
-        pos.bandLower,
-        pos.bandUpper,
+        pos.lowerBound,
+        pos.upperBound,
       );
 
       // Create a group for this position
@@ -508,6 +504,23 @@
           `M ${upperX} ${yPos - 5} L ${upperX + triangleWidth} ${yPos - 5} L ${upperX} ${yPos - 5 + triangleHeight} Z`,
         )
         .style("fill", COLORS.bandDot);
+
+      // ----------------------------------------------------------------------
+      // CURRENT PERCENTAGE LABEL (Right of bar)
+      // Shows the actual current allocation
+      // ADJUST: font-size to change text size
+      // Colors defined in COLORS configuration object at top of file
+      // Use .style() not .attr() for CSS custom properties to work
+      // ----------------------------------------------------------------------
+      posGroup
+        .append("text")
+        .attr("x", xScale(pos.current) + (isMobile ? 6 : 10))
+        .attr("y", yPos + barHeight / 2)
+        .attr("dominant-baseline", "middle")
+        .style("fill", COLORS.currentText)
+        .attr("font-size", isMobile ? "11px" : "14px")
+        .attr("font-weight", "700")
+        .text(`${pos.current.toFixed(pos.current < 10 ? 2 : 0)}%`);
 
       // ----------------------------------------------------------------------
       // TARGET MARKER (Vertical line showing target allocation)

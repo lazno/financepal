@@ -1,13 +1,13 @@
 import domain/common_types.{
-  type Asset, type Currency, type InstrumentType, type Isin, type MarketValue,
-  type Price, type PriceData, type Quantity, type Symbol, instrument_type,
-  isin_value, market_value, market_value_amount, price_amount, quantity_shares,
+  type Asset, type InstrumentType, type Isin, type PriceData, instrument_type,
+  market_value_amount,
 }
 import domain/policy_types.{
   type Policy, InstrumentType, allocation_bps, policy_sensitivity_cap_bps,
   policy_sensitivity_floor_bps, policy_sensitivity_rel_bps,
   policy_target_key_value, policy_target_type, policy_target_weights,
 }
+import domain/portfolio.{type PositionSnapshot}
 import domain/position_types.{type Position}
 import gleam/dict
 import gleam/float
@@ -63,19 +63,6 @@ pub fn band_upper_bound(band: Band) -> Int {
   band.upper_bound_bps
 }
 
-// Domain: PositionSnapshot - represents a single position with current market data
-pub type PositionSnapshot {
-  PositionSnapshot(
-    isin: Isin,
-    symbol: Symbol,
-    instrument_type: InstrumentType,
-    quantity: Quantity,
-    current_price: Price,
-    market_value: MarketValue,
-    currency: Currency,
-  )
-}
-
 // Domain: AllocationSnapshot - complete portfolio snapshot for rebalancing analysis
 pub type AllocationSnapshot {
   AllocationSnapshot(
@@ -95,21 +82,8 @@ pub fn build_snapshot(
   price_data: List(PriceData),
   assets: List(Asset),
 ) -> AllocationSnapshot {
-  // Build price lookup map (isin -> PriceData)
-  let price_map =
-    list.fold(price_data, dict.new(), fn(acc, price_data) {
-      dict.insert(acc, isin_value(price_data.isin), price_data)
-    })
-
-  // Build asset lookup map (isin -> Asset)
-  let asset_map =
-    list.fold(assets, dict.new(), fn(acc, asset) {
-      dict.insert(acc, isin_value(asset.isin), asset)
-    })
-
-  // Process each position to create snapshots
   let #(position_snapshots, missing_prices) =
-    process_positions(positions, price_map, asset_map, [], [])
+    portfolio.enrich_positions(positions, price_data, assets)
 
   // Calculate total market value
   let total_value = calculate_total_value(position_snapshots)
@@ -123,76 +97,6 @@ pub fn build_snapshot(
     positions: position_snapshots,
     missing_prices: missing_prices,
   )
-}
-
-// Helper function to process positions into snapshots
-fn process_positions(
-  positions: List(Position),
-  price_map: dict.Dict(String, PriceData),
-  asset_map: dict.Dict(String, Asset),
-  snapshots: List(PositionSnapshot),
-  missing: List(Isin),
-) -> #(List(PositionSnapshot), List(Isin)) {
-  case positions {
-    [] -> #(list.reverse(snapshots), list.reverse(missing))
-    [position, ..rest] -> {
-      let isin_str = isin_value(position.isin)
-
-      case dict.get(price_map, isin_str) {
-        Error(_) -> {
-          // No price data available
-          process_positions(rest, price_map, asset_map, snapshots, [
-            position.isin,
-            ..missing
-          ])
-        }
-
-        Ok(price_data) -> {
-          case dict.get(asset_map, isin_str) {
-            Error(_) -> {
-              // No asset registry entry - this should not happen in a consistent system
-              // For now, skip this position and log as missing
-              process_positions(rest, price_map, asset_map, snapshots, [
-                position.isin,
-                ..missing
-              ])
-            }
-
-            Ok(asset) -> {
-              let market_value =
-                calculate_market_value(position.quantity, price_data.price)
-
-              let snapshot =
-                PositionSnapshot(
-                  isin: position.isin,
-                  symbol: asset.symbol,
-                  instrument_type: asset.instrument_type,
-                  quantity: position.quantity,
-                  current_price: price_data.price,
-                  market_value: market_value,
-                  currency: price_data.currency,
-                )
-
-              process_positions(
-                rest,
-                price_map,
-                asset_map,
-                [snapshot, ..snapshots],
-                missing,
-              )
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-// Calculate market value for a position
-fn calculate_market_value(quantity: Quantity, price: Price) -> MarketValue {
-  let shares = quantity_shares(quantity)
-  let price_amount = price_amount(price)
-  market_value(shares *. price_amount)
 }
 
 // Calculate total portfolio value
