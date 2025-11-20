@@ -1,7 +1,6 @@
 import application/types.{type Context}
 import gleam/http
 import rest/resource/directa_sim_resource
-import rest/resource/drift_resource
 import rest/resource/policy_resource
 import rest/resource/portfolio_resource
 import simplifile
@@ -15,7 +14,6 @@ pub fn handle_request(req: Request, ctx: Context) -> Response {
   case wisp.path_segments(req) {
     ["api", "import"] -> handle_import(req, ctx)
     ["api", "portfolio"] -> portfolio_resource.handle_get_portfolio(req, ctx)
-    ["api", "drift"] -> drift_resource.handle_get_drift(req, ctx)
     ["api", "policy"] -> policy_resource.handle_request(req, ctx)
     [] -> serve_index()
     _ -> serve_static(req)
@@ -31,7 +29,7 @@ fn serve_index() -> Response {
 fn serve_static(req: Request) -> Response {
   // Serve all other requests from frontend/dist directory
   wisp.serve_static(req, under: "/", from: "frontend/dist", next: fn() {
-    wisp.not_found()
+    serve_index()
   })
 }
 

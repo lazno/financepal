@@ -1,32 +1,30 @@
 <script lang="ts">
-  import Layout from './lib/Layout.svelte';
-  import Dashboard from './routes/Dashboard.svelte';
-  import Drift from './routes/Drift.svelte';
-  import Targets from './routes/Targets.svelte';
-  
+  import Layout from "./lib/Layout.svelte";
+  import Dashboard from "./routes/Dashboard.svelte";
+  import Targets from "./routes/Targets.svelte";
+
   let currentPath = $state(window.location.pathname);
-  
+
   function navigate(path: string) {
-    window.history.pushState({}, '', path);
+    window.history.pushState({}, "", path);
     currentPath = path;
   }
-  
-  window.addEventListener('popstate', () => {
+
+  window.addEventListener("popstate", () => {
     currentPath = window.location.pathname;
   });
-  
+
   // Make navigate available globally for links
   (window as any).navigate = navigate;
 </script>
 
 <Layout>
-  {#if currentPath === '/'}
+  {#if currentPath === "/"}
     <Dashboard />
-  {:else if currentPath === '/drift'}
-    <Drift />
-  {:else if currentPath === '/targets'}
+  {:else if currentPath === "/targets"}
     <Targets />
   {:else}
     <Dashboard />
   {/if}
 </Layout>
+

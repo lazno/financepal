@@ -27,17 +27,16 @@
 
   function toggleTheme() {
     const html = document.documentElement;
-    const currentMode = html.getAttribute('data-mode');
-    const newMode = currentMode === 'dark' ? 'light' : 'dark';
-    
-    html.setAttribute('data-mode', newMode);
-    localStorage.setItem('theme', newMode);
+    const currentMode = html.getAttribute("data-mode");
+    const newMode = currentMode === "dark" ? "light" : "dark";
+
+    html.setAttribute("data-mode", newMode);
+    localStorage.setItem("theme", newMode);
     isMenuOpen = false;
   }
 
   const navItems = [
     { path: "/", label: "Dashboard", icon: IconDashboard },
-    { path: "/drift", label: "Drift Analysis", icon: IconTrending },
     { path: "/targets", label: "Targets", icon: IconTarget },
   ];
 
@@ -105,15 +104,17 @@
       <!-- Backdrop -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div 
-        class="fixed inset-0 z-40" 
-        onclick={() => isMenuOpen = false}
+      <div
+        class="fixed inset-0 z-40"
+        onclick={() => (isMenuOpen = false)}
       ></div>
-      
+
       <!-- Menu -->
-      <div class="absolute bottom-full left-4 mb-2 w-48 bg-surface-50-950 rounded-container-token shadow-xl border border-surface-200-800 overflow-hidden z-50">
-        <button 
-          onclick={toggleTheme} 
+      <div
+        class="absolute bottom-full left-4 mb-2 w-48 bg-surface-50-950 rounded-container-token shadow-xl border border-surface-200-800 overflow-hidden z-50"
+      >
+        <button
+          onclick={toggleTheme}
           class="w-full text-left px-4 py-3 hover:bg-surface-100-900 flex items-center gap-3 transition-colors"
         >
           <IconSun class="w-5 h-5 dark:hidden" />
@@ -124,8 +125,10 @@
     {/if}
 
     <button
-      onclick={() => isMenuOpen = !isMenuOpen}
-      class="btn hover:preset-tonal w-full {collapsed ? 'justify-center px-0' : 'justify-between px-4'}"
+      onclick={() => (isMenuOpen = !isMenuOpen)}
+      class="btn hover:preset-tonal w-full {collapsed
+        ? 'justify-center px-0'
+        : 'justify-between px-4'}"
     >
       {#if !collapsed}
         <span class="text-sm font-medium">Settings</span>
