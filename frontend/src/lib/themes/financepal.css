@@ -1,0 +1,76 @@
+/* financepal.css */
+[data-theme='financepal'] {
+	/* Typography */
+	--text-scaling: 1.0;
+	--base-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --base-font-color: #1a0e2e;
+    --base-font-color-dark: #f0ecf8;
+
+	/* Primary (Purple: #9d4edd) */
+    /* Generated scale approximation */
+	--color-primary-50: #f3e6ff;
+	--color-primary-100: #e0c2ff;
+	--color-primary-200: #cd9eff;
+	--color-primary-300: #b97aff;
+	--color-primary-400: #a656ff;
+	--color-primary-500: #9d4edd;
+	--color-primary-600: #8a3bc8;
+	--color-primary-700: #7629b3;
+	--color-primary-800: #63179e;
+	--color-primary-900: #500589;
+	--color-primary-950: #3d0074;
+
+	--color-primary-contrast-dark: #000000;
+	--color-primary-contrast-light: #ffffff;
+
+    /* Secondary (Using a lighter purple/white mix for secondary actions) */
+	--color-secondary-50: #fdfbff;
+	--color-secondary-100: #fbf7ff;
+	--color-secondary-200: #f5ebff;
+	--color-secondary-300: #edd6ff;
+	--color-secondary-400: #e4c2ff;
+	--color-secondary-500: #dbadff;
+	--color-secondary-600: #af8acc;
+	--color-secondary-700: #836899;
+	--color-secondary-800: #584566;
+	--color-secondary-900: #2c2333;
+	--color-secondary-950: #161119;
+
+    --color-secondary-contrast-dark: #000000;
+    --color-secondary-contrast-light: #ffffff;
+
+    /* Surface */
+    /* Light theme surface colors */
+	--color-surface-50: #ffffff;
+	--color-surface-100: #f8f7fc;
+	--color-surface-200: #f0eff5;
+	--color-surface-300: #e0dfe5;
+	--color-surface-400: #c0bfc5;
+	--color-surface-500: #a09fa5;
+	--color-surface-600: #807f85;
+	--color-surface-700: #605f65;
+	--color-surface-800: #403f45;
+	--color-surface-900: #2d1f3a;
+	--color-surface-950: #1a1625;
+
+    --color-surface-contrast-dark: #000000;
+    --color-surface-contrast-light: #ffffff;
+
+	/* Success (#16a34a) */
+	--color-success-500: #16a34a;
+    --color-success-contrast-dark: #000000;
+    --color-success-contrast-light: #ffffff;
+
+	/* Error (#dc2626) */
+	--color-error-500: #dc2626;
+    --color-error-contrast-dark: #000000;
+    --color-error-contrast-light: #ffffff;
+
+    /* Custom Gradients & Variables */
+    --fp-gradient-primary: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+    --fp-gradient-dark: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+    
+    /* Exact match from target_allocation_light.html */
+    --fp-bg-light: linear-gradient(135deg, #f8f7fc 0%, #f3f0fa 100%);
+    --fp-bg-dark: linear-gradient(135deg, #1a1625 0%, #2d1f3a 100%);
+}

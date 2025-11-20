@@ -14,7 +14,9 @@
   import IconRefreshCw from "~icons/lucide/refresh-cw";
   import IconPlus from "~icons/lucide/plus";
   import IconTrash from "~icons/lucide/trash-2";
-  import IconXCircle from "~icons/lucide/x-circle";
+  import IconX from "~icons/lucide/x";
+  import IconPin from "~icons/lucide/pin";
+  import IconPinOff from "~icons/lucide/pin-off";
   import type { DriftPosition } from "../lib/api";
 
   let loading = $state(true);
@@ -22,7 +24,12 @@
   let policy = $state<Policy | null>(null);
   let portfolio = $state<PortfolioResponse | null>(null);
   let saving = $state(false);
+  
+  // Modal state
+  let showDeleteModal = $state(false);
+  let showAddTooltip = $state(false);
   let newInstrumentType = $state("");
+  let isAddingInstrument = $state(false);
 
   // Merged data structure for the UI
   interface Row {
@@ -30,17 +37,16 @@
     currentBps: number;
     targetBps: number;
     band: [number, number];
+    pinned: boolean;
   }
 
   const DEFAULT_SENSITIVITY = { rel_bps: 1000, floor_bps: 300, cap_bps: 500 };
-  const DEFAULT_SENSITIVITY_DISPLAY_STR =
-    "Default Band: ±10% (Min 3pp, Max 5pp)";
 
   let rows = $state<Row[]>([]);
 
   // Derived stats
   let totalTargetBps = $derived(rows.reduce((sum, r) => sum + r.targetBps, 0));
-  let isValid = $derived(totalTargetBps === 10000);
+  let isValid = $derived(Math.abs(totalTargetBps - 10000) < 5); // Allow small rounding error tolerance
 
   // Chart data
   let chartPositions: DriftPosition[] = $derived(
@@ -101,11 +107,7 @@
     }
 
     // 2. Determine targets
-    // If policy exists, use its targets.
-    // If not, default to current weights (so sum is ~100% and user can start easily).
     const targets = policy ? policy.targets : { ...currentWeights };
-
-    // If no policy, use default sensitivity
     const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
 
     // 3. Merge
@@ -123,19 +125,87 @@
           currentBps: current,
           targetBps: target,
           band: calculateBand(target, sensitivity),
+          pinned: false,
         };
       })
-      .filter((r) => r.currentBps > 0 || r.targetBps > 0) // Only show if held or targeted
-      .sort((a, b) => a.instrumentType.localeCompare(b.instrumentType));
+      .filter((r) => r.currentBps > 0 || r.targetBps > 0)
+      .sort((a, b) => {
+          if (b.currentBps !== a.currentBps) return b.currentBps - a.currentBps;
+          return a.instrumentType.localeCompare(b.instrumentType);
+      });
   }
 
-  function addInstrument() {
+  function removeRow(index: number) {
+    rows = rows.filter((_, i) => i !== index);
+  }
+
+  function togglePin(index: number) {
+    rows[index].pinned = !rows[index].pinned;
+  }
+
+  function handleSliderChange(index: number, newPct: number) {
+    const newBps = pctToBps(newPct);
+    const oldBps = rows[index].targetBps;
+    const diffBps = newBps - oldBps;
+
+    if (diffBps === 0) return;
+
+    // Update the changed row
+    rows[index].targetBps = newBps;
+    const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
+    rows[index].band = calculateBand(newBps, sensitivity);
+
+    // Redistribute difference among unpinned rows
+    const unpinnedRows = rows.filter((r, i) => i !== index && !r.pinned);
+    
+    if (unpinnedRows.length > 0) {
+      const totalUnpinnedBps = unpinnedRows.reduce((sum, r) => sum + r.targetBps, 0);
+      
+      // We need to remove 'diffBps' from the other rows
+      let distributedBps = 0;
+      
+      // Sort unpinned rows by allocation size (largest first) to hide rounding errors in the largest bucket
+      const sortedUnpinnedIndices = unpinnedRows
+          .map(r => rows.indexOf(r))
+          .sort((a, b) => rows[b].targetBps - rows[a].targetBps);
+
+      sortedUnpinnedIndices.forEach((realIndex, i) => {
+        const row = rows[realIndex];
+        let adjustment = 0;
+
+        if (i === sortedUnpinnedIndices.length - 1) {
+            // Last item gets the exact remainder to ensure zero-sum change
+            adjustment = -diffBps - distributedBps;
+        } else {
+             // Standard proportional distribution
+             const proportion = totalUnpinnedBps > 0 ? row.targetBps / totalUnpinnedBps : 1 / unpinnedRows.length;
+             adjustment = Math.round(-diffBps * proportion);
+        }
+
+        let newTarget = row.targetBps + adjustment;
+        
+        // Clamp to 0, but tracking exact changes is hard if we clamp.
+        // If we hit 0, we break the zero-sum game unless we re-distribute the overflow.
+        // For standard slider usage, simple clamping is acceptable as the user will see the total go red if they push too far.
+        if (newTarget < 0) newTarget = 0;
+        
+        // Track what we ACTUALLY changed
+        distributedBps += (newTarget - row.targetBps);
+
+        rows[realIndex].targetBps = newTarget;
+        rows[realIndex].band = calculateBand(newTarget, sensitivity);
+      });
+    }
+  }
+
+    function addInstrument() {
     if (!newInstrumentType.trim()) return;
 
-    const type = newInstrumentType.trim();
-    // Check if already exists
+    const type = newInstrumentType.trim().toUpperCase();
     if (rows.some((r) => r.instrumentType === type)) {
       newInstrumentType = "";
+      isAddingInstrument = false;
+      showAddTooltip = false; // Ensure tooltip is hidden
       return;
     }
 
@@ -148,20 +218,21 @@
         currentBps: 0,
         targetBps: 0,
         band: calculateBand(0, sensitivity),
+        pinned: false,
       },
-    ].sort((a, b) => a.instrumentType.localeCompare(b.instrumentType));
+    ].sort((a, b) => {
+        if (b.currentBps !== a.currentBps) return b.currentBps - a.currentBps;
+        return a.instrumentType.localeCompare(b.instrumentType);
+    });
 
     newInstrumentType = "";
-  }
-
-  function removeRow(index: number) {
-    rows = rows.filter((_, i) => i !== index);
+    isAddingInstrument = false;
+    showAddTooltip = false; // Ensure tooltip is hidden
   }
 
   function resetToCurrent() {
     if (!portfolio) return;
-
-    // Recalculate current weights
+    
     const typeValues: Record<string, number> = {};
     let totalValue = 0;
 
@@ -182,24 +253,39 @@
       }
     }
 
-    // Update rows
     const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
 
-    rows.forEach((r) => {
-      r.targetBps = currentWeights[r.instrumentType] || 0;
-      r.band = calculateBand(r.targetBps, sensitivity);
+    rows.forEach(r => {
+        r.targetBps = currentWeights[r.instrumentType] || 0;
+        r.band = calculateBand(r.targetBps, sensitivity);
+        r.pinned = false;
     });
   }
 
-  function updateTarget(index: number, newPct: number) {
-    const newBps = pctToBps(newPct);
-    rows[index].targetBps = newBps;
-    // Recalculate band immediately
-    const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
-    rows[index].band = calculateBand(newBps, sensitivity);
-  }
-
   async function save() {
+    // Auto-correct small rounding errors (±5bps) before saving
+    if (Math.abs(totalTargetBps - 10000) < 5 && totalTargetBps !== 10000) {
+        let currentSum = rows.reduce((acc, r) => acc + r.targetBps, 0);
+        const drift = 10000 - currentSum;
+        
+        // Find largest allocation to absorb the drift
+        let maxIndex = -1;
+        let maxVal = -1;
+        rows.forEach((r, i) => {
+            if (r.targetBps > maxVal) {
+                maxVal = r.targetBps;
+                maxIndex = i;
+            }
+        });
+        
+        if (maxIndex !== -1) {
+            rows[maxIndex].targetBps += drift;
+            // Re-calculate band for the modified row
+            const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
+            rows[maxIndex].band = calculateBand(rows[maxIndex].targetBps, sensitivity);
+        }
+    }
+
     if (!isValid) return;
     saving = true;
     try {
@@ -212,8 +298,6 @@
 
       const sensitivity = policy ? policy.sensitivity : DEFAULT_SENSITIVITY;
 
-      // We need an ID for the policy object, but if it's new, the backend ignores it/generates it.
-      // We'll use a placeholder if policy is null.
       const policyToSave: Policy = {
         id: policy?.id || "new",
         targets,
@@ -221,9 +305,7 @@
       };
 
       await updatePolicy(policyToSave);
-      // Reload to confirm
       policy = await fetchPolicy();
-      initRows();
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -232,17 +314,12 @@
   }
 
   async function removePolicy() {
-    if (
-      !confirm(
-        "Are you sure you want to delete the entire policy? This will reset all targets.",
-      )
-    )
-      return;
     saving = true;
     try {
       await deletePolicy();
       policy = null;
       initRows();
+      showDeleteModal = false;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -251,30 +328,22 @@
   }
 </script>
 
-<div class="space-y-6">
-  <div class="flex justify-between items-center">
-    <div>
-      <h2 class="h2">Target Allocation</h2>
-      <p class="text-surface-600">Define your desired portfolio composition.</p>
+<div class="container mx-auto max-w-5xl pb-20">
+  <!-- Header -->
+  <div class="flex justify-between items-start mb-10">
+    <div class="header-content">
+      <h1 class="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-br from-primary-500 to-primary-300 tracking-tighter">
+        Target Allocation
+      </h1>
+      <p class="text-surface-600 dark:text-surface-400 font-light">
+        Define your desired portfolio composition.
+      </p>
     </div>
-    <div class="flex gap-2 items-center">
+    <div class="band-badge px-4 py-2 rounded-lg text-sm font-semibold backdrop-blur-md">
       {#if policy}
-        <div class="badge variant-soft-surface">
-          Band: ±{bpsToPct(policy.sensitivity.rel_bps)}% (Min {bpsToPct(
-            policy.sensitivity.floor_bps,
-          )}pp, Max {bpsToPct(policy.sensitivity.cap_bps)}pp)
-        </div>
-        <button
-          class="btn-icon btn-icon-sm variant-soft-error"
-          onclick={removePolicy}
-          title="Delete Policy"
-        >
-          <IconXCircle class="w-4 h-4" />
-        </button>
+        Band: ±{bpsToPct(policy.sensitivity.rel_bps)}% (Min {bpsToPct(policy.sensitivity.floor_bps)}pp, Max {bpsToPct(policy.sensitivity.cap_bps)}pp)
       {:else}
-        <div class="badge variant-soft-surface">
-          {DEFAULT_SENSITIVITY_DISPLAY_STR}
-        </div>
+        Band: ±10% (Min 3pp, Max 5pp)
       {/if}
     </div>
   </div>
@@ -284,151 +353,495 @@
   {:else if error}
     <div class="alert variant-filled-error">{error}</div>
   {:else}
-    <div class="card p-4 space-y-4">
-      <div class="table-container">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Instrument Type</th>
-              <th class="text-right">Current</th>
-              <th class="text-right">Target</th>
-              <th class="text-right">Band</th>
-              <th class="text-center">Drift</th>
-              <th class="w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {#each rows as row, i}
-              <tr>
-                <td class="align-middle">{row.instrumentType}</td>
-                <td class="text-right align-middle">
-                  {row.currentBps === 0
-                    ? "—"
-                    : bpsToPct(row.currentBps).toFixed(2) + "%"}
-                </td>
-                <td class="text-right w-32 align-middle">
-                  <div
-                    class="input-group input-group-divider grid-cols-[1fr_auto]"
+    <!-- Chart Section -->
+    <div class="projected-draft mb-10 rounded-2xl p-8 backdrop-blur-md">
+      <div class="section-title text-xl font-bold mb-6 flex items-center gap-3">Projected Draft</div>
+      <div class="flex gap-6 mb-6 flex-wrap">
+        <div class="flex items-center gap-2 text-sm font-medium text-surface-600 dark:text-surface-400">
+          <div class="w-3 h-3 rounded bg-success-500"></div>
+          <span>In Band</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm font-medium text-surface-600 dark:text-surface-400">
+          <div class="w-3 h-3 rounded bg-primary-500"></div>
+          <span>Under Target</span>
+        </div>
+        <div class="flex items-center gap-2 text-sm font-medium text-surface-600 dark:text-surface-400">
+          <div class="w-3 h-3 rounded bg-error-500"></div>
+          <span>Over Target</span>
+        </div>
+      </div>
+      
+      <div class="w-full">
+        <ResponsiveDriftChart positions={chartPositions} />
+      </div>
+    </div>
+
+    <!-- Table Section (Desktop) -->
+    <div class="hidden md:block table-wrapper mb-8 rounded-2xl overflow-hidden backdrop-blur-md">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr>
+            <th class="px-4 py-5 text-left text-xs font-bold uppercase tracking-wider">Instrument Type</th>
+            <th class="px-4 py-5 text-left text-xs font-bold uppercase tracking-wider">Current</th>
+            <th class="px-4 py-5 text-left text-xs font-bold uppercase tracking-wider w-1/2">Target Allocation</th>
+            <th class="px-4 py-5 text-center text-xs font-bold uppercase tracking-wider w-32"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each rows as row, i}
+            <tr class="hover:bg-primary-500/5 dark:hover:bg-primary-500/10 transition-colors">
+              <td class="px-4 py-5 text-sm border-b border-primary-500/10 dark:border-primary-300/10 instrument-name font-bold tracking-wide">{row.instrumentType}</td>
+              <td class="px-4 py-5 text-sm border-b border-primary-500/10 dark:border-primary-300/10 current-pct font-bold text-base">
+                {row.currentBps === 0 ? "—" : bpsToPct(row.currentBps).toFixed(2) + "%"}
+              </td>
+              <td class="px-4 py-5 text-sm border-b border-primary-500/10 dark:border-primary-300/10">
+                <div class="slider-container flex items-center gap-3 w-full">
+                  <input
+                    type="range"
+                    class="flex-1 h-1.5 rounded-full appearance-none cursor-pointer bg-primary-500/20"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={bpsToPct(row.targetBps)}
+                    oninput={(e) => handleSliderChange(i, parseFloat(e.currentTarget.value))}
+                    disabled={row.pinned}
+                  />
+                  <span class="target-value min-w-[3rem] text-right font-bold text-base">{bpsToPct(row.targetBps).toFixed(0)}%</span>
+                </div>
+              </td>
+              <td class="px-4 py-5 text-sm border-b border-primary-500/10 dark:border-primary-300/10 text-center">
+                <div class="flex items-center justify-end gap-2 pr-4">
+                  <button 
+                    class="pin-btn w-8 h-8 rounded-md flex items-center justify-center transition-colors duration-200 {row.pinned ? 'pinned' : ''}" 
+                    onclick={() => togglePin(i)}
+                    title={row.pinned ? "Unpin allocation" : "Pin allocation"}
                   >
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={bpsToPct(row.targetBps)}
-                      oninput={(e) =>
-                        updateTarget(i, parseFloat(e.currentTarget.value) || 0)}
-                    />
-                    <div class="input-group-shim">%</div>
-                  </div>
-                </td>
-                <td class="text-right text-surface-600 align-middle">
-                  {bpsToPct(row.band[0]).toFixed(2)}% - {bpsToPct(
-                    row.band[1],
-                  ).toFixed(2)}%
-                </td>
-                <td class="text-center align-middle">
-                  {#if row.currentBps < row.band[0]}
-                    <span class="badge variant-filled-primary">Under</span>
-                  {:else if row.currentBps > row.band[1]}
-                    <span class="badge variant-filled-error">Over</span>
-                  {:else}
-                    <span class="badge variant-filled-success">OK</span>
-                  {/if}
-                </td>
-                <td class="text-right align-middle w-10">
+                    {#if row.pinned}
+                      <IconPin class="w-4 h-4" />
+                    {:else}
+                      <IconPinOff class="w-4 h-4 opacity-50" />
+                    {/if}
+                  </button>
                   {#if row.currentBps === 0}
                     <button
-                      class="btn-icon btn-icon-sm variant-soft-error"
+                      class="pin-btn w-8 h-8 rounded-md flex items-center justify-center transition-colors duration-200 hover:text-error-500 hover:bg-error-500/10"
                       onclick={() => removeRow(i)}
-                      title="Remove"
+                      title="Remove instrument"
+                    >
+                      <IconTrash class="w-4 h-4" />
+                    </button>
+                  {:else}
+                    <div class="w-8 h-8"></div> <!-- Spacer to keep alignment -->
+                  {/if}
+                </div>
+              </td>
+            </tr>
+          {/each}
+          
+          <!-- Total Row -->
+          <tr class="total-row font-bold">
+            <td colspan="2" class="border-none py-6"></td>
+            <td class="border-none py-6 text-right">
+              <div class="flex items-center justify-end gap-2 text-lg font-bold {isValid ? 'text-success-500' : 'text-error-500'}">
+                <span class="total-indicator w-2 h-2 rounded-full inline-block mr-2 {isValid ? 'bg-success-500' : 'bg-error-500 animate-pulse'}"></span>
+                <span>Total: {bpsToPct(totalTargetBps).toFixed(0)}%</span>
+              </div>
+            </td>
+            <td class="border-none py-6"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="md:hidden space-y-4 mb-8">
+      {#each rows as row, i}
+        <div class="glass-card p-4 rounded-xl border border-primary-500/10 relative overflow-hidden">
+           <!-- Row 1: Name + Current + Pin -->
+           <div class="flex justify-between items-start mb-4">
+              <div>
+                 <div class="font-bold text-lg tracking-wide mb-1">{row.instrumentType}</div>
+                 <div class="text-xs font-medium text-surface-500 uppercase tracking-wider">Current: <span class="text-primary-600 dark:text-primary-400 text-sm">{row.currentBps === 0 ? "—" : bpsToPct(row.currentBps).toFixed(2) + "%"}</span></div>
+              </div>
+              <div class="flex gap-2">
+                  <button 
+                    class="w-8 h-8 rounded-lg bg-surface-100 dark:bg-surface-800 flex items-center justify-center transition-colors {row.pinned ? 'text-primary-500 bg-primary-500/10' : 'text-surface-400'}" 
+                    onclick={() => togglePin(i)}
+                  >
+                    {#if row.pinned}
+                      <IconPin class="w-4 h-4" />
+                    {:else}
+                      <IconPinOff class="w-4 h-4" />
+                    {/if}
+                  </button>
+                  {#if row.currentBps === 0}
+                    <button
+                      class="w-8 h-8 rounded-lg bg-surface-100 dark:bg-surface-800 text-surface-400 hover:text-error-500 hover:bg-error-500/10 flex items-center justify-center transition-colors"
+                      onclick={() => removeRow(i)}
                     >
                       <IconTrash class="w-4 h-4" />
                     </button>
                   {/if}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="2" class="font-bold text-right">Total:</td>
-              <td
-                class="text-right font-bold {isValid
-                  ? 'text-success-500'
-                  : 'text-error-500'}"
-              >
-                {bpsToPct(totalTargetBps).toFixed(2)}%
-              </td>
-              <td colspan="3">
-                {#if !isValid}
-                  <span class="text-error-500 text-sm ml-2"
-                    >Must sum to 100%</span
-                  >
-                {/if}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+              </div>
+           </div>
+
+           <!-- Row 2: Slider -->
+           <div class="mb-2">
+              <div class="flex justify-between text-xs font-medium mb-2 text-surface-500">
+                 <span>Target Allocation</span>
+                 <span class="text-lg font-bold text-primary-600 dark:text-primary-400">{bpsToPct(row.targetBps).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                class="w-full h-2 rounded-full appearance-none cursor-pointer bg-surface-200 dark:bg-surface-700"
+                min="0"
+                max="100"
+                step="1"
+                value={bpsToPct(row.targetBps)}
+                oninput={(e) => handleSliderChange(i, parseFloat(e.currentTarget.value))}
+                disabled={row.pinned}
+              />
+           </div>
+        </div>
+      {/each}
+
+      <!-- Mobile Total -->
+      <div class="glass-card p-4 rounded-xl border border-primary-500/10 flex justify-between items-center">
+         <span class="font-bold text-surface-600 dark:text-surface-300">Total Allocation</span>
+         <div class="flex items-center gap-2 text-lg font-bold {isValid ? 'text-success-500' : 'text-error-500'}">
+            <span class="w-2 h-2 rounded-full {isValid ? 'bg-success-500' : 'bg-error-500 animate-pulse'}"></span>
+            {bpsToPct(totalTargetBps).toFixed(0)}%
+         </div>
+      </div>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-5">
+      <!-- Add Instrument -->
+      <div class="relative h-12 flex items-center w-full md:w-auto justify-center md:justify-start order-2 md:order-1">
+        {#if isAddingInstrument}
+            <div class="glass-input-container flex items-center gap-2 p-1.5 rounded-lg animate-fade-in w-full md:w-auto justify-between">
+                <input 
+                    type="text" 
+                    bind:value={newInstrumentType}
+                    placeholder="Type..." 
+                    class="bg-transparent border-none focus:ring-0 text-sm w-full md:w-32 px-2 font-medium outline-none"
+                    autofocus
+                    onkeydown={(e) => e.key === 'Enter' && addInstrument()}
+                />
+                <div class="flex gap-1">
+                    <button class="w-8 h-8 rounded-md bg-primary-500 text-white flex items-center justify-center hover:bg-primary-600 transition-colors shadow-sm" onclick={addInstrument}>
+                        <IconPlus class="w-5 h-5" />
+                    </button>
+                    <button class="w-8 h-8 rounded-md flex items-center justify-center text-surface-500 hover:text-error-500 hover:bg-error-500/10 transition-colors" onclick={() => isAddingInstrument = false}>
+                        <IconX class="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        {:else}
+            <button 
+                class="add-btn-icon w-12 h-12 rounded-xl flex items-center justify-center text-2xl cursor-pointer transition-all duration-200 shadow-sm"
+                onmouseenter={() => showAddTooltip = true}
+                onmouseleave={() => showAddTooltip = false}
+                onclick={() => { isAddingInstrument = true; showAddTooltip = false; }}
+            >
+                +
+            </button>
+            {#if showAddTooltip}
+                <div class="tooltip absolute bottom-full left-1/2 md:left-0 transform -translate-x-1/2 md:translate-x-0 mb-2 px-3 py-2 rounded bg-surface-900 text-white text-xs whitespace-nowrap z-50 shadow-lg pointer-events-none">Add Instrument</div>
+            {/if}
+        {/if}
       </div>
 
-      <!-- Add Instrument Section -->
-      <div
-        class="flex gap-2 items-center p-2 bg-surface-50-900 rounded-container-token border border-surface-200-800"
-      >
-        <input
-          class="input w-full"
-          type="text"
-          placeholder="Add new instrument type (e.g. Crypto, Gold)..."
-          bind:value={newInstrumentType}
-          onkeydown={(e) => e.key === "Enter" && addInstrument()}
-        />
-        <button
-          class="btn variant-filled-secondary"
-          disabled={!newInstrumentType.trim()}
-          onclick={addInstrument}
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full md:w-auto order-1 md:order-2">
+        <button class="btn px-6 py-3 rounded-lg font-bold text-sm transition-all duration-300 shadow-sm btn-secondary flex items-center justify-center" onclick={resetToCurrent}>
+          <IconRefreshCw class="mr-2 w-4 h-4" /> <span class="whitespace-nowrap">Reset</span>
+        </button>
+        <button 
+            class="btn px-6 py-3 rounded-lg font-bold text-sm transition-all duration-300 shadow-sm btn-danger disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-opacity-30 flex items-center justify-center" 
+            onclick={() => showDeleteModal = true}
+            disabled={!policy || policy.id === 'new'}
+            title={(!policy || policy.id === 'new') ? "No saved policy to delete" : "Delete current policy"}
         >
-          <IconPlus class="mr-2" /> Add
+          <IconTrash class="mr-2 w-4 h-4" /> Delete
         </button>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-4 border-t border-surface-500/30">
-        <button class="btn variant-soft-surface" onclick={resetToCurrent}>
-          <IconRefreshCw class="mr-2" /> Reset to Current
-        </button>
-        <button
-          class="btn variant-filled-primary"
+        <button 
+          class="btn px-6 py-3 rounded-lg font-bold text-sm transition-all duration-300 shadow-sm btn-primary flex items-center justify-center" 
           disabled={!isValid || saving}
           onclick={save}
         >
-          {#if saving}Saving...{:else}<IconSave class="mr-2" /> Save Changes{/if}
+          {#if saving}Saving...{:else}<IconSave class="mr-2 w-4 h-4" /> Save{/if}
         </button>
       </div>
     </div>
-    <div class="card preset-filled-surface-100-900 p-4 sm:p-6">
-      <div
-        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6"
-      >
-        <h3 class="text-lg sm:text-xl font-bold">Projected Drift</h3>
-        <div
-          class="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm"
-        >
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-success-500 rounded"></div>
-            <span>In Band</span>
-          </div>
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-primary-500 rounded"></div>
-            <span>Under Target</span>
-          </div>
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-error-500 rounded"></div>
-            <span>Over Target</span>
-          </div>
-        </div>
-      </div>
-
-      <ResponsiveDriftChart positions={chartPositions} />
-    </div>
   {/if}
 </div>
+
+<!-- Delete Modal -->
+{#if showDeleteModal}
+<div class="modal fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm active">
+    <div class="modal-content w-full max-w-md p-8 rounded-2xl shadow-2xl">
+        <div class="modal-title text-xl font-bold mb-3">Delete Allocation?</div>
+        <div class="modal-text mb-6 text-sm opacity-80">Are you sure you want to delete this target allocation? This action cannot be undone.</div>
+        <div class="modal-actions flex gap-3">
+            <button class="btn px-6 py-3 rounded-lg font-bold text-sm transition-all duration-300 shadow-sm btn-secondary flex-1" onclick={() => showDeleteModal = false}>Cancel</button>
+            <button class="btn px-6 py-3 rounded-lg font-bold text-sm transition-all duration-300 shadow-sm btn-danger flex-1" onclick={removePolicy}>Delete</button>
+        </div>
+    </div>
+</div>
+{/if}
+
+<style lang="postcss">
+    /* Custom Styles matching the reference design */
+    
+    .band-badge {
+        background: rgba(157, 78, 221, 0.1);
+        border: 1px solid rgba(157, 78, 221, 0.3);
+        color: var(--color-primary-500);
+    }
+    :global([data-mode='dark']) .band-badge {
+        background: rgba(212, 165, 255, 0.1);
+        border: 1px solid rgba(212, 165, 255, 0.3);
+        color: var(--color-primary-300);
+    }
+
+    .projected-draft {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+        border: 1px solid rgba(157, 78, 221, 0.15);
+        box-shadow: 0 8px 32px rgba(157, 78, 221, 0.08);
+    }
+    :global([data-mode='dark']) .projected-draft {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(212, 165, 255, 0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-title {
+        color: var(--color-surface-900);
+    }
+    :global([data-mode='dark']) .section-title {
+        color: var(--color-surface-50);
+    }
+    .section-title::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 24px;
+        border-radius: 2px;
+        background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-300) 100%);
+    }
+
+    .table-wrapper {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+        border: 1px solid rgba(157, 78, 221, 0.15);
+        box-shadow: 0 8px 32px rgba(157, 78, 221, 0.08);
+    }
+    :global([data-mode='dark']) .table-wrapper {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(212, 165, 255, 0.15);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    thead {
+        background: linear-gradient(90deg, rgba(157, 78, 221, 0.08) 0%, rgba(199, 125, 255, 0.05) 100%);
+        border-bottom: 2px solid rgba(157, 78, 221, 0.15);
+    }
+    :global([data-mode='dark']) thead {
+        background: linear-gradient(90deg, rgba(212, 165, 255, 0.1) 0%, rgba(183, 139, 255, 0.05) 100%);
+        border-bottom: 2px solid rgba(212, 165, 255, 0.2);
+    }
+
+    th {
+        color: var(--color-primary-600);
+    }
+    :global([data-mode='dark']) th {
+        color: var(--color-primary-300);
+    }
+
+    td {
+        color: var(--color-surface-900);
+    }
+    :global([data-mode='dark']) td {
+        color: var(--color-surface-100);
+    }
+
+    .current-pct {
+        color: var(--color-primary-600);
+    }
+    :global([data-mode='dark']) .current-pct {
+        color: var(--color-primary-300);
+    }
+
+    /* Slider Styling */
+    
+    /* Webkit Thumb */
+    input[type="range"]::-webkit-slider-thumb {
+        background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-300) 100%);
+        margin-top: -5px; /* Center on track */
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+    }
+
+    /* Firefox Thumb */
+    input[type="range"]::-moz-range-thumb {
+        background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-300) 100%);
+    }
+    input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.2);
+    }
+
+    .target-value {
+        color: var(--color-primary-600);
+    }
+    :global([data-mode='dark']) .target-value {
+        color: var(--color-primary-300);
+    }
+
+    /* Pin Button */
+    .pin-btn {
+        color: var(--color-surface-400);
+    }
+    .pin-btn:hover {
+        background-color: rgba(157, 78, 221, 0.1);
+        color: var(--color-primary-500);
+    }
+    .pin-btn.pinned {
+        background-color: rgba(157, 78, 221, 0.2);
+        color: var(--color-primary-500);
+    }
+
+    /* Total Row */
+    .total-row {
+        background: linear-gradient(90deg, rgba(157, 78, 221, 0.12) 0%, rgba(199, 125, 255, 0.08) 100%);
+        border-top: 2px solid rgba(157, 78, 221, 0.15);
+    }
+    :global([data-mode='dark']) .total-row {
+        background: linear-gradient(90deg, rgba(212, 165, 255, 0.15) 0%, rgba(183, 139, 255, 0.08) 100%);
+        border-top: 2px solid rgba(212, 165, 255, 0.2);
+    }
+
+    /* Buttons */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-400) 100%);
+        color: white;
+        border: none;
+    }
+    .btn-primary:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(157, 78, 221, 0.3);
+    }
+    .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .btn-secondary {
+        background-color: var(--color-surface-50);
+        color: var(--color-primary-600);
+        border: 1px solid rgba(157, 78, 221, 0.3);
+    }
+    :global([data-mode='dark']) .btn-secondary {
+        background-color: rgba(157, 78, 221, 0.1);
+        color: var(--color-primary-300);
+        border: 1px solid rgba(157, 78, 221, 0.3);
+    }
+    .btn-secondary:hover {
+        background-color: white;
+        border-color: rgba(157, 78, 221, 0.5);
+        box-shadow: 0 4px 6px -1px rgba(157, 78, 221, 0.1);
+    }
+    :global([data-mode='dark']) .btn-secondary:hover {
+        background-color: rgba(157, 78, 221, 0.2);
+        border-color: rgba(157, 78, 221, 0.5);
+    }
+
+    .btn-danger {
+        background-color: rgba(220, 38, 38, 0.1);
+        color: var(--color-error-500);
+        border: 1px solid rgba(220, 38, 38, 0.3);
+    }
+    .btn-danger:hover {
+        background-color: rgba(220, 38, 38, 0.2);
+        border-color: rgba(220, 38, 38, 0.5);
+    }
+
+    /* Add Instrument */
+    .add-btn-icon {
+        background: linear-gradient(135deg, rgba(157, 78, 221, 0.1) 0%, rgba(199, 125, 255, 0.1) 100%);
+        border: 1px solid rgba(157, 78, 221, 0.3);
+        color: var(--color-primary-500);
+    }
+    :global([data-mode='dark']) .add-btn-icon {
+        background: rgba(212, 165, 255, 0.1);
+        border: 1px solid rgba(212, 165, 255, 0.3);
+        color: var(--color-primary-300);
+    }
+    .add-btn-icon:hover {
+        transform: scale(1.05);
+        background: linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(199, 125, 255, 0.15) 100%);
+    }
+
+    .glass-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+        box-shadow: 0 4px 16px rgba(157, 78, 221, 0.08);
+    }
+    :global([data-mode='dark']) .glass-card {
+        background: rgba(255, 255, 255, 0.02);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .glass-input-container {
+        background: linear-gradient(135deg, rgba(157, 78, 221, 0.05) 0%, rgba(199, 125, 255, 0.05) 100%);
+        border: 1px solid rgba(157, 78, 221, 0.3);
+        box-shadow: 0 4px 12px rgba(157, 78, 221, 0.1);
+    }
+    :global([data-mode='dark']) .glass-input-container {
+        background: rgba(212, 165, 255, 0.1);
+        border: 1px solid rgba(212, 165, 255, 0.3);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .glass-input-container input {
+        color: var(--color-surface-900);
+    }
+    :global([data-mode='dark']) .glass-input-container input {
+        color: var(--color-surface-50);
+    }
+    :global([data-mode='dark']) .glass-input-container input::placeholder {
+        color: var(--color-surface-400);
+    }
+
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border-width: 4px;
+        border-style: solid;
+        border-color: var(--color-surface-900) transparent transparent transparent;
+    }
+
+    /* Modal */
+    .modal-content {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+        border: 1px solid rgba(157, 78, 221, 0.2);
+    }
+    :global([data-mode='dark']) .modal-content {
+        background: linear-gradient(135deg, rgba(45, 31, 58, 0.95) 0%, rgba(26, 22, 37, 0.95) 100%);
+        border: 1px solid rgba(212, 165, 255, 0.2);
+    }
+    .modal-title {
+        color: var(--color-surface-900);
+    }
+    :global([data-mode='dark']) .modal-title {
+        color: var(--color-surface-50);
+    }
+    .modal-text {
+        color: var(--color-surface-700);
+    }
+    :global([data-mode='dark']) .modal-text {
+        color: var(--color-surface-300);
+    }
+</style>

@@ -165,49 +165,33 @@
     // ------------------------------------------------------------------------
 
     function updateTooltipPosition(event: any) {
+      // Get coordinates relative to the chart container
+      const [pointerX, pointerY] = d3.pointer(event, chartContainer);
+      
       const tooltipRect = tooltip.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+      const containerRect = chartContainer.getBoundingClientRect();
+      
+      // Initial position: slightly offset from cursor
+      let left = pointerX + 10;
+      let top = pointerY + 10;
 
-      // Calculate initial position (offset from cursor/touch)
-      let left = event.clientX + 10;
-      let top = event.clientY + 15;
-
-      // 1. Horizontal Positioning Strategy
-      // Try placing to the right. If it overflows, flip to the left.
-      if (left + tooltipRect.width > viewportWidth - 10) {
-        left = event.clientX - tooltipRect.width - 10;
+      // Horizontal constraint: flip to left if overflowing right edge
+      if (left + tooltipRect.width > containerRect.width) {
+        left = pointerX - tooltipRect.width - 10;
       }
 
-      // 2. Vertical Positioning Strategy
-      // Try placing below. If it overflows, flip to above.
-      if (top + tooltipRect.height > viewportHeight - 10) {
-        top = event.clientY - tooltipRect.height - 10;
+      // Vertical constraint: flip to top if overflowing bottom edge
+      // (We use a simpler check here since we are inside the container)
+      if (top + tooltipRect.height > containerRect.height) {
+        top = pointerY - tooltipRect.height - 10;
       }
 
-      // 3. Hard Clamping (The "Safety Net")
-      // Ensure the tooltip NEVER goes off-screen, regardless of the above logic.
-      // This handles cases where the tooltip is wider than the available space on either side.
+      // Ensure we don't go negative (top/left edges)
+      left = Math.max(0, left);
+      top = Math.max(0, top);
 
-      // Clamp Left: Ensure it's at least 10px from the left edge
-      left = Math.max(10, left);
-
-      // Clamp Right: Ensure it's at least 10px from the right edge
-      // (We prioritize the left clamp if the screen is extremely narrow)
-      if (left + tooltipRect.width > viewportWidth - 10) {
-        left = Math.max(10, viewportWidth - tooltipRect.width - 10);
-      }
-
-      // Clamp Top: Ensure it's at least 10px from the top edge
-      top = Math.max(10, top);
-
-      // Clamp Bottom: Ensure it's at least 10px from the bottom edge
-      if (top + tooltipRect.height > viewportHeight - 10) {
-        top = Math.max(10, viewportHeight - tooltipRect.height - 10);
-      }
-
-      tooltip.style.left = left + "px";
-      tooltip.style.top = top + "px";
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     }
 
     function showTooltip(event: any, pos: Position, element: any) {
@@ -277,7 +261,7 @@
 
     const margin = {
       top: isMobile ? 40 : 60,
-      right: isMobile ? 60 : 80,
+      right: isMobile ? 20 : 40, // Reduced right margin to prevent overflow
       bottom: isMobile ? 60 : 80,
       left: isMobile ? 80 : isTablet ? 100 : 120,
     };
@@ -290,10 +274,11 @@
     const svg = d3
       .select(chartContainer)
       .append("svg")
-      .attr("width", containerWidth)
+      .attr("width", "100%") // Use 100% width
       .attr("height", containerHeight)
       .attr("viewBox", `0 0 ${containerWidth} ${containerHeight}`)
       .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("overflow", "visible") // Allow tooltips/labels to extend slightly if needed
       .on("click", () => {
         hideTooltip(null);
       });
@@ -667,11 +652,11 @@
 
   <div
     bind:this={chartContainer}
-    class="chart bg-gray-50 dark:bg-gray-900"
+    class="chart"
   ></div>
   <div
     bind:this={tooltip}
-    class="tooltip bg-gray-800 border border-gray-600"
+    class="tooltip bg-surface-800 border border-surface-600"
   ></div>
 </div>
 
@@ -685,18 +670,19 @@
     position: relative;
     display: block;
     width: 100%;
+    overflow: hidden; /* Prevent horizontal scroll */
   }
 
   /* Chart background and styling */
   .chart {
     border-radius: 8px;
-    padding: 10px;
+    padding: 0; /* Remove padding that might cause overflow */
     width: 100%;
   }
 
   /* Tooltip styling */
   .tooltip {
-    position: fixed; /* Fixed positioning prevents cutoff */
+    position: absolute; /* Changed from fixed to absolute */
     display: none;
     border-radius: 8px;
     padding: 14px;
@@ -706,7 +692,7 @@
       0 10px 15px -3px rgba(0, 0, 0, 0.3),
       0 4px 6px -2px rgba(0, 0, 0, 0.2);
     min-width: 220px;
-    max-width: 90vw; /* Ensure it never exceeds screen width on mobile */
+    max-width: 90%; /* Ensure it fits within container */
   }
 
   /* Smooth transitions for hover effects */

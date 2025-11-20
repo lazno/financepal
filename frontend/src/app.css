@@ -6,6 +6,16 @@
 @import './lib/themes/dracula.css';
 @import './lib/themes/synthwave.css';
 @import './lib/themes/monokai.css';
+@import './lib/themes/financepal.css';
 
 /* Dark mode configuration using data-mode attribute (Skeleton standard) */
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));
+
+:root [data-theme='financepal'] body {
+    background: var(--fp-bg-light);
+    min-height: 100vh;
+}
+
+:root [data-theme='financepal'][data-mode='dark'] body {
+    background: var(--fp-bg-dark);
+}
