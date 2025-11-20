@@ -2,6 +2,10 @@
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
 @import '@skeletonlabs/skeleton/themes/catppuccin';
+@import './lib/themes/tokyonight.css';
+@import './lib/themes/dracula.css';
+@import './lib/themes/synthwave.css';
+@import './lib/themes/monokai.css';
 
 /* Dark mode configuration using data-mode attribute (Skeleton standard) */
 @custom-variant dark (&:where([data-mode="dark"], [data-mode="dark"] *));

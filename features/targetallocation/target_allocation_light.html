@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Target Allocation - Interactive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            padding: 40px 20px;
+        }
+
+        /* LIGHT THEME */
+        .light-theme {
+            background: linear-gradient(135deg, #f8f7fc 0%, #f3f0fa 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            margin: 0 -20px;
+        }
+
+        /* DARK THEME */
+        .dark-theme {
+            background: linear-gradient(135deg, #1a1625 0%, #2d1f3a 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+            margin: 0 -20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .light-theme .header-content h1 {
+            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .light-theme .header-content p {
+            color: #7a5fa3;
+        }
+
+        .dark-theme .header-content h1 {
+            background: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .dark-theme .header-content p {
+            color: #a89fc0;
+        }
+
+        .header-content h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header-content p {
+            font-size: 0.95rem;
+            font-weight: 300;
+        }
+
+        .light-theme .band-badge {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.1) 0%, rgba(199, 125, 255, 0.1) 100%);
+            border: 1.5px solid rgba(157, 78, 221, 0.3);
+            color: #9d4edd;
+        }
+
+        .dark-theme .band-badge {
+            background: rgba(212, 165, 255, 0.1);
+            border: 1px solid rgba(212, 165, 255, 0.3);
+            color: #d4a5ff;
+        }
+
+        .band-badge {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+
+        /* CHART SECTION */
+        .light-theme .projected-draft {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+            border: 1px solid rgba(157, 78, 221, 0.15);
+            box-shadow: 0 8px 32px rgba(157, 78, 221, 0.08), 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-theme .projected-draft {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 165, 255, 0.15);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .projected-draft {
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 40px;
+        }
+
+        .light-theme .section-title {
+            color: #1a0e2e;
+        }
+
+        .light-theme .section-title::before {
+            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+        }
+
+        .dark-theme .section-title {
+            color: #f0ecf8;
+        }
+
+        .dark-theme .section-title::before {
+            background: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            border-radius: 2px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .light-theme .legend-item {
+            color: #7a5fa3;
+        }
+
+        .dark-theme .legend-item {
+            color: #a89fc0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .dot-green { background: #4ade80; }
+        .dot-blue { background: #3b82f6; }
+        .dot-red { background: #ef4444; }
+
+        .light-theme .chart-placeholder {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.08) 0%, rgba(199, 125, 255, 0.04) 100%);
+            border: 1.5px dashed rgba(157, 78, 221, 0.2);
+            color: #a994b8;
+        }
+
+        .dark-theme .chart-placeholder {
+            background: rgba(212, 165, 255, 0.05);
+            border: 1px dashed rgba(212, 165, 255, 0.2);
+            color: #7a6f8f;
+        }
+
+        .chart-placeholder {
+            border-radius: 8px;
+            padding: 60px 20px;
+            text-align: center;
+            font-size: 0.95rem;
+        }
+
+        /* TABLE SECTION */
+        .light-theme .table-wrapper {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+            border: 1px solid rgba(157, 78, 221, 0.15);
+            box-shadow: 0 8px 32px rgba(157, 78, 221, 0.08), 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .dark-theme .table-wrapper {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 165, 255, 0.15);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-wrapper {
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .light-theme thead {
+            background: linear-gradient(90deg, rgba(157, 78, 221, 0.08) 0%, rgba(199, 125, 255, 0.05) 100%);
+            border-bottom: 2px solid rgba(157, 78, 221, 0.15);
+        }
+
+        .dark-theme thead {
+            background: linear-gradient(90deg, rgba(212, 165, 255, 0.1) 0%, rgba(183, 139, 255, 0.05) 100%);
+            border-bottom: 2px solid rgba(212, 165, 255, 0.2);
+        }
+
+        .light-theme th {
+            color: #9d4edd;
+        }
+
+        .dark-theme th {
+            color: #d4a5ff;
+        }
+
+        th {
+            padding: 20px 16px;
+            text-align: left;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .light-theme td {
+            border-bottom: 1px solid rgba(157, 78, 221, 0.08);
+            color: #2d1f3a;
+        }
+
+        .dark-theme td {
+            border-bottom: 1px solid rgba(212, 165, 255, 0.08);
+            color: #e0d9f0;
+        }
+
+        td {
+            padding: 20px 16px;
+            font-size: 0.95rem;
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .light-theme tbody tr:hover {
+            background: rgba(157, 78, 221, 0.05);
+        }
+
+        .dark-theme tbody tr:hover {
+            background: rgba(212, 165, 255, 0.08);
+        }
+
+        tbody tr:hover {
+            transform: translateX(4px);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .light-theme .instrument-name {
+            color: #1a0e2e;
+        }
+
+        .dark-theme .instrument-name {
+            color: #f0ecf8;
+        }
+
+        .instrument-name {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            min-width: 100px;
+        }
+
+        .light-theme .current-pct {
+            color: #9d4edd;
+        }
+
+        .dark-theme .current-pct {
+            color: #d4a5ff;
+        }
+
+        .current-pct {
+            font-weight: 700;
+            font-size: 1rem;
+            min-width: 60px;
+        }
+
+        /* SLIDER */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .light-theme input[type="range"] {
+            accent-color: #9d4edd;
+        }
+
+        .dark-theme input[type="range"] {
+            accent-color: #d4a5ff;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 80px;
+            height: 6px;
+            border-radius: 3px;
+            background: linear-gradient(to right, rgba(157, 78, 221, 0.2) 0%, rgba(157, 78, 221, 0.05) 100%);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(157, 78, 221, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.4);
+            transform: scale(1.1);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(157, 78, 221, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-moz-range-thumb:hover {
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.4);
+            transform: scale(1.1);
+        }
+
+        .dark-theme input[type="range"] {
+            background: linear-gradient(to right, rgba(212, 165, 255, 0.2) 0%, rgba(212, 165, 255, 0.05) 100%);
+        }
+
+        .dark-theme input[type="range"]::-webkit-slider-thumb {
+            background: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+            box-shadow: 0 2px 8px rgba(212, 165, 255, 0.3);
+        }
+
+        .dark-theme input[type="range"]::-webkit-slider-thumb:hover {
+            box-shadow: 0 4px 12px rgba(212, 165, 255, 0.4);
+        }
+
+        .dark-theme input[type="range"]::-moz-range-thumb {
+            background: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+            box-shadow: 0 2px 8px rgba(212, 165, 255, 0.3);
+        }
+
+        .dark-theme input[type="range"]::-moz-range-thumb:hover {
+            box-shadow: 0 4px 12px rgba(212, 165, 255, 0.4);
+        }
+
+        .target-value {
+            min-width: 50px;
+            text-align: right;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .light-theme .target-value {
+            color: #9d4edd;
+        }
+
+        .dark-theme .target-value {
+            color: #d4a5ff;
+        }
+
+        /* PIN BUTTON */
+        .pin-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: #c4a7d6;
+            flex-shrink: 0;
+        }
+
+        .light-theme .pin-btn {
+            color: #c4a7d6;
+        }
+
+        .light-theme .pin-btn:hover {
+            background: rgba(157, 78, 221, 0.1);
+            color: #9d4edd;
+        }
+
+        .light-theme .pin-btn.pinned {
+            background: rgba(157, 78, 221, 0.15);
+            color: #9d4edd;
+        }
+
+        .dark-theme .pin-btn {
+            color: #7a6f8f;
+        }
+
+        .dark-theme .pin-btn:hover {
+            background: rgba(212, 165, 255, 0.1);
+            color: #d4a5ff;
+        }
+
+        .dark-theme .pin-btn.pinned {
+            background: rgba(212, 165, 255, 0.15);
+            color: #d4a5ff;
+        }
+
+        /* TOTAL ROW */
+        .light-theme .total-row {
+            background: linear-gradient(90deg, rgba(157, 78, 221, 0.12) 0%, rgba(199, 125, 255, 0.08) 100%);
+            border-top: 2px solid rgba(157, 78, 221, 0.15);
+        }
+
+        .dark-theme .total-row {
+            background: linear-gradient(90deg, rgba(212, 165, 255, 0.15) 0%, rgba(183, 139, 255, 0.08) 100%);
+            border-top: 2px solid rgba(212, 165, 255, 0.2);
+        }
+
+        .total-row {
+            font-weight: 700;
+        }
+
+        .total-row td {
+            border-bottom: none;
+            padding: 24px 16px;
+        }
+
+        .light-theme .total-label {
+            color: #7a5fa3;
+        }
+
+        .dark-theme .total-label {
+            color: #a89fc0;
+        }
+
+        .total-label {
+            text-align: right;
+        }
+
+        .total-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .total-value.valid {
+            color: #16a34a;
+        }
+
+        .total-value.invalid {
+            color: #dc2626;
+        }
+
+        .total-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .total-indicator.valid {
+            background: #16a34a;
+        }
+
+        .total-indicator.invalid {
+            background: #dc2626;
+            animation: pulse-invalid 1.5s infinite;
+        }
+
+        @keyframes pulse-invalid {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* BOTTOM SECTION */
+        .bottom-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+
+        .light-theme .btn-primary {
+            background: linear-gradient(135deg, #9d4edd 0%, #c77dff 100%);
+            color: #ffffff;
+        }
+
+        .light-theme .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(157, 78, 221, 0.25);
+        }
+
+        .light-theme .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .dark-theme .btn-primary {
+            background: linear-gradient(135deg, #d4a5ff 0%, #b78bff 100%);
+            color: #1a1625;
+        }
+
+        .dark-theme .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(212, 165, 255, 0.3);
+        }
+
+        .dark-theme .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .light-theme .btn-secondary {
+            background: rgba(255, 255, 255, 0.8);
+            color: #9d4edd;
+            border: 1.5px solid rgba(157, 78, 221, 0.3);
+        }
+
+        .light-theme .btn-secondary:hover {
+            background: rgba(255, 255, 255, 1);
+            border-color: rgba(157, 78, 221, 0.5);
+            box-shadow: 0 4px 12px rgba(157, 78, 221, 0.12);
+        }
+
+        .dark-theme .btn-secondary {
+            background: rgba(212, 165, 255, 0.1);
+            color: #d4a5ff;
+            border: 1px solid rgba(212, 165, 255, 0.3);
+        }
+
+        .dark-theme .btn-secondary:hover {
+            background: rgba(212, 165, 255, 0.15);
+            border-color: rgba(212, 165, 255, 0.5);
+        }
+
+        .light-theme .btn-danger {
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+            border: 1.5px solid rgba(220, 38, 38, 0.3);
+        }
+
+        .light-theme .btn-danger:hover {
+            background: rgba(220, 38, 38, 0.15);
+            border-color: rgba(220, 38, 38, 0.5);
+        }
+
+        .dark-theme .btn-danger {
+            background: rgba(220, 38, 38, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+        }
+
+        .dark-theme .btn-danger:hover {
+            background: rgba(220, 38, 38, 0.15);
+            border-color: rgba(220, 38, 38, 0.5);
+        }
+
+        /* ADD INSTRUMENT */
+        .add-instrument-compact {
+            position: relative;
+        }
+
+        .light-theme .add-btn-icon {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.1) 0%, rgba(199, 125, 255, 0.1) 100%);
+            border: 1.5px solid rgba(157, 78, 221, 0.3);
+            color: #9d4edd;
+        }
+
+        .light-theme .add-btn-icon:hover {
+            background: linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(199, 125, 255, 0.15) 100%);
+            border-color: rgba(157, 78, 221, 0.5);
+        }
+
+        .dark-theme .add-btn-icon {
+            background: rgba(212, 165, 255, 0.1);
+            border: 1px solid rgba(212, 165, 255, 0.3);
+            color: #d4a5ff;
+        }
+
+        .dark-theme .add-btn-icon:hover {
+            background: rgba(212, 165, 255, 0.15);
+            border-color: rgba(212, 165, 255, 0.5);
+        }
+
+        .add-btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .add-btn-icon:active {
+            transform: scale(0.95);
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }
+
+        .add-instrument-compact:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid rgba(0, 0, 0, 0.9);
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .light-theme .modal-content {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+            border: 1px solid rgba(157, 78, 221, 0.2);
+            color: #1a0e2e;
+        }
+
+        .dark-theme .modal-content {
+            background: linear-gradient(135deg, rgba(45, 31, 58, 0.95) 0%, rgba(26, 22, 37, 0.95) 100%);
+            border: 1px solid rgba(212, 165, 255, 0.2);
+            color: #f0ecf8;
+        }
+
+        .modal-content {
+            background-clip: padding-box;
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .modal-text {
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+            opacity: 0.8;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+<!-- LIGHT THEME -->
+<div class="light-theme">
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Target Allocation</h1>
+                <p>Define your desired portfolio composition.</p>
+            </div>
+            <div class="band-badge">Band: ±10% (Min 3pp, Max 5pp)</div>
+        </div>
+
+        <div class="projected-draft">
+            <div class="section-title">Projected Draft</div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot dot-green"></div>
+                    <span>In Band</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-blue"></div>
+                    <span>Under Target</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-red"></div>
+                    <span>Over Target</span>
+                </div>
+            </div>
+            <div class="chart-placeholder">
+                [Chart visualization would be rendered here]
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instrument Type</th>
+                        <th>Current</th>
+                        <th style="flex: 1;">Target Allocation</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="instrument-name">BOND</td>
+                        <td class="current-pct">19.95%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="BOND" min="0" max="100" value="20">
+                                <span class="target-value">20%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="BOND" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">COMMODITY</td>
+                        <td class="current-pct">23.84%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="COMMODITY" min="0" max="100" value="24">
+                                <span class="target-value">24%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="COMMODITY" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">EQUITY</td>
+                        <td class="current-pct">3.86%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="EQUITY" min="0" max="100" value="4">
+                                <span class="target-value">4%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="EQUITY" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">ETF</td>
+                        <td class="current-pct">52.34%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="ETF" min="0" max="100" value="52">
+                                <span class="target-value">52%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="ETF" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr class="total-row">
+                        <td colspan="2"></td>
+                        <td style="text-align: right;">
+                            <div class="total-value valid">
+                                <span class="total-indicator valid"></span>
+                                <span>Total: 100%</span>
+                            </div>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bottom-section">
+            <div class="add-instrument-compact">
+                <div class="add-btn-icon">+</div>
+                <div class="tooltip">Add Instrument</div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="reset-btn-light">↻ Reset to Current</button>
+                <button class="btn btn-danger" id="delete-btn-light">🗑️ Delete</button>
+                <button class="btn btn-primary" id="save-btn-light">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DARK THEME -->
+<div class="dark-theme">
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>Target Allocation</h1>
+                <p>Define your desired portfolio composition.</p>
+            </div>
+            <div class="band-badge">Band: ±10% (Min 3pp, Max 5pp)</div>
+        </div>
+
+        <div class="projected-draft">
+            <div class="section-title">Projected Draft</div>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot dot-green"></div>
+                    <span>In Band</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-blue"></div>
+                    <span>Under Target</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot dot-red"></div>
+                    <span>Over Target</span>
+                </div>
+            </div>
+            <div class="chart-placeholder">
+                [Chart visualization would be rendered here]
+            </div>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instrument Type</th>
+                        <th>Current</th>
+                        <th style="flex: 1;">Target Allocation</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="instrument-name">BOND</td>
+                        <td class="current-pct">19.95%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="BOND" min="0" max="100" value="20">
+                                <span class="target-value">20%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="BOND" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">COMMODITY</td>
+                        <td class="current-pct">23.84%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="COMMODITY" min="0" max="100" value="24">
+                                <span class="target-value">24%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="COMMODITY" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">EQUITY</td>
+                        <td class="current-pct">3.86%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="EQUITY" min="0" max="100" value="4">
+                                <span class="target-value">4%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="EQUITY" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr>
+                        <td class="instrument-name">ETF</td>
+                        <td class="current-pct">52.34%</td>
+                        <td>
+                            <div class="slider-container">
+                                <input type="range" class="target-slider" data-instrument="ETF" min="0" max="100" value="52">
+                                <span class="target-value">52%</span>
+                            </div>
+                        </td>
+                        <td><button class="pin-btn" data-instrument="ETF" title="Pin this allocation">📌</button></td>
+                    </tr>
+                    <tr class="total-row">
+                        <td colspan="2"></td>
+                        <td style="text-align: right;">
+                            <div class="total-value valid">
+                                <span class="total-indicator valid"></span>
+                                <span>Total: 100%</span>
+                            </div>
+                        </td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="bottom-section">
+            <div class="add-instrument-compact">
+                <div class="add-btn-icon">+</div>
+                <div class="tooltip">Add Instrument</div>
+            </div>
+            <div class="actions">
+                <button class="btn btn-secondary" id="reset-btn-dark">↻ Reset to Current</button>
+                <button class="btn btn-danger" id="delete-btn-dark">🗑️ Delete</button>
+                <button class="btn btn-primary" id="save-btn-dark">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal" id="delete-modal">
+    <div class="modal-content">
+        <div class="modal-title">Delete Allocation?</div>
+        <div class="modal-text">Are you sure you want to delete this target allocation? This action cannot be undone.</div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" id="cancel-delete">Cancel</button>
+            <button class="btn btn-danger" id="confirm-delete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    class AllocationController {
+        constructor(themeType) {
+            this.themeType = themeType;
+            this.themeEl = document.querySelector(`.${themeType}-theme`);
+            this.sliders = Array.from(this.themeEl.querySelectorAll('.target-slider'));
+            this.pinButtons = Array.from(this.themeEl.querySelectorAll('.pin-btn'));
+            this.saveBtn = this.themeEl.querySelector(`#save-btn-${themeType}`);
+            this.resetBtn = this.themeEl.querySelector(`#reset-btn-${themeType}`);
+            this.deleteBtn = this.themeEl.querySelector(`#delete-btn-${themeType}`);
+            this.totalValueEl = this.themeEl.querySelector('.total-value');
+            this.pinned = new Set();
+            this.initialValues = {};
+            
+            this.init();
+        }
+
+        init() {
+            // Store initial values
+            this.sliders.forEach(slider => {
+                this.initialValues[slider.dataset.instrument] = parseInt(slider.value);
+            });
+
+            this.sliders.forEach(slider => {
+                slider.addEventListener('input', () => this.handleSliderChange(slider));
+            });
+
+            this.pinButtons.forEach(btn => {
+                btn.addEventListener('click', () => this.handlePin(btn));
+            });
+
+            this.saveBtn.addEventListener('click', () => this.handleSave());
+            this.resetBtn.addEventListener('click', () => this.handleReset());
+            this.deleteBtn.addEventListener('click', () => this.handleDelete());
+
+            this.updateTotal();
+            this.updateSaveButton();
+        }
+
+        handleSliderChange(changedSlider) {
+            const changedInstrument = changedSlider.dataset.instrument;
+            const oldValue = parseInt(changedSlider.getAttribute('data-previous') || changedSlider.value);
+            const newValue = parseInt(changedSlider.value);
+            const difference = newValue - oldValue;
+
+            // Update display
+            const display = changedSlider.nextElementSibling;
+            display.textContent = `${newValue}%`;
+
+            // Get unpinned sliders
+            const unpinnedSliders = this.sliders.filter(s => 
+                s.dataset.instrument !== changedInstrument && !this.pinned.has(s.dataset.instrument)
+            );
+
+            // If there are unpinned sliders, redistribute
+            if (unpinnedSliders.length > 0 && difference !== 0) {
+                const totalUnpinned = unpinnedSliders.reduce((sum, s) => sum + parseInt(s.value), 0);
+                
+                // Distribute proportionally
+                unpinnedSliders.forEach(slider => {
+                    const currentVal = parseInt(slider.value);
+                    const proportion = totalUnpinned > 0 ? currentVal / totalUnpinned : 1 / unpinnedSliders.length;
+                    const adjustment = -difference * proportion;
+                    const newVal = Math.max(0, currentVal + adjustment);
+                    
+                    slider.value = newVal;
+                    slider.nextElementSibling.textContent = `${Math.round(newVal)}%`;
+                });
+            }
+
+            changedSlider.setAttribute('data-previous', newValue);
+            this.updateTotal();
+            this.updateSaveButton();
+        }
+
+        getTotal() {
+            return Math.round(this.sliders.reduce((sum, slider) => sum + parseInt(slider.value), 0));
+        }
+
+        handlePin(btn) {
+            const instrument = btn.dataset.instrument;
+            btn.classList.toggle('pinned');
+            
+            if (btn.classList.contains('pinned')) {
+                this.pinned.add(instrument);
+            } else {
+                this.pinned.delete(instrument);
+            }
+        }
+
+        updateTotal() {
+            const total = this.getTotal();
+            const totalSpan = this.totalValueEl.querySelector('span:last-child');
+            const indicator = this.totalValueEl.querySelector('.total-indicator');
+            
+            totalSpan.textContent = `Total: ${total}%`;
+            
+            if (total === 100) {
+                this.totalValueEl.classList.remove('invalid');
+                this.totalValueEl.classList.add('valid');
+                indicator.classList.remove('invalid');
+                indicator.classList.add('valid');
+            } else {
+                this.totalValueEl.classList.remove('valid');
+                this.totalValueEl.classList.add('invalid');
+                indicator.classList.remove('valid');
+                indicator.classList.add('invalid');
+            }
+        }
+
+        updateSaveButton() {
+            const total = this.getTotal();
+            this.saveBtn.disabled = total !== 100;
+        }
+
+        handleSave() {
+            alert('Allocation saved! (Demo)');
+        }
+
+        handleReset() {
+            this.sliders.forEach(slider => {
+                const initial = this.initialValues[slider.dataset.instrument];
+                slider.value = initial;
+                slider.nextElementSibling.textContent = `${initial}%`;
+            });
+            this.updateTotal();
+            this.updateSaveButton();
+        }
+
+        handleDelete() {
+            const modal = document.getElementById('delete-modal');
+            modal.classList.add('active');
+
+            const cancel = document.getElementById('cancel-delete');
+            const confirm = document.getElementById('confirm-delete');
+
+            const closeModal = () => modal.classList.remove('active');
+            cancel.onclick = closeModal;
+            confirm.onclick = () => {
+                alert('Allocation deleted! (Demo)');
+                closeModal();
+            };
+        }
+    }
+
+    // Initialize both themes
+    new AllocationController('light');
+    new AllocationController('dark');
+</script>
+
+</body>
+</html>
+
+---
+
+## LLM CONTEXT & REFERENCE PROMPT
+
+### Product Overview
+This is a **Target Allocation UI** for portfolio management. Users define desired allocations across different instrument types (BOND, COMMODITY, EQUITY, ETF, or custom types). The interface uses sliders instead of number inputs for intuitive adjustment and proportional rebalancing.
+
+### Key Features
+1. **Layout Order**: Chart visualization at top → Table with sliders → Save/Delete buttons at bottom
+2. **Visual Themes**: Both light and dark themes with consistent functionality
+3. **Slider-based Input**: 0-100% range per instrument type with real-time percentage display
+
+### Interaction Logic
+- **Auto-Rebalancing**: When user adjusts one slider, unpinned instruments proportionally decrease/increase to maintain total
+- **Pin Functionality**: Users can "pin" (📌) instrument allocations to lock them. Pinned instruments won't change when other sliders move
+- **Total Constraint**: Sum must equal 100% for save button to enable
+- **Invalid State**: If total ≠ 100%, total indicator turns red with pulsing animation
+- **Reset**: Button resets all sliders to initial values
+- **Delete**: Always-visible button opens confirmation modal (better UX than hidden delete option)
+
+### Data Structure
+Each instrument has:
+- `data-instrument`: Name (e.g., "BOND", "COMMODITY")
+- `value`: Current target percentage
+- `pinned` state: Boolean indicating if locked
+- Current allocation shown for reference
+
+### Validation Rules
+1. Save button disabled if total ≠ 100%
+2. Total indicator is green (valid) at 100%, red (invalid) otherwise
+3. User can exceed 100% by pinning everything, total displays warning state
+4. All percentages rounded to nearest whole number for display
+
+### Color System
+- Primary accent: Purple gradient (#9d4edd to #c77dff)
+- Valid state: Green (#16a34a)
+- Invalid state: Red (#dc2626)
+- Light theme: Soft gradients on white backgrounds
+- Dark theme: Glassmorphism with transparency and blur
+
+### Add Instrument Feature
+Compact icon button (+) in bottom left with hover tooltip. Takes minimal space—useful but infrequently used so kept subtle.
+
+### Future Considerations
+- Each instrument can have band ranges (min/max allowed values)
+- Chart updates in real-time as sliders change
+- Persistence of saved allocations
+- Support for custom instrument types
+- Undo/redo for slider adjustments

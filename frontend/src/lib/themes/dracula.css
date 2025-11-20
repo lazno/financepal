@@ -1,0 +1,234 @@
+/* dracula.css */
+[data-theme='dracula'] {
+	/* Typography */
+	--text-scaling: 1.067;
+	--base-font-color: #f8f8f2;
+	--base-font-color-dark: #f8f8f2;
+	--base-font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--base-font-size: inherit;
+	--base-line-height: inherit;
+	--base-font-weight: normal;
+	--base-font-style: normal;
+	--base-letter-spacing: 0em;
+
+	--heading-font-color: #f8f8f2;
+	--heading-font-color-dark: #f8f8f2;
+	--heading-font-family: inherit;
+	--heading-font-weight: bold;
+	--heading-font-style: normal;
+	--heading-letter-spacing: inherit;
+
+	--anchor-font-color: #8be9fd;
+	--anchor-font-color-dark: #8be9fd;
+	--anchor-font-family: inherit;
+	--anchor-font-size: inherit;
+	--anchor-line-height: inherit;
+	--anchor-font-weight: inherit;
+	--anchor-font-style: inherit;
+	--anchor-letter-spacing: inherit;
+	--anchor-text-decoration: none;
+	--anchor-text-decoration-hover: underline;
+	--anchor-text-decoration-active: none;
+	--anchor-text-decoration-focus: none;
+
+	/* Layout */
+	--spacing: 0.25rem;
+	--radius-base: 0.375rem;
+	--radius-container: 0.75rem;
+	--default-border-width: 1px;
+	--default-divide-width: 1px;
+	--default-ring-width: 1px;
+
+	/* Backgrounds */
+	--body-background-color: #282a36;
+	--body-background-color-dark: #21222c;
+
+	/* Primary (Purple #bd93f9) */
+	--color-primary-50: #f5f0ff;
+	--color-primary-100: #ede5ff;
+	--color-primary-200: #ddd0ff;
+	--color-primary-300: #c9b0ff;
+	--color-primary-400: #b385ff;
+	--color-primary-500: #bd93f9;
+	--color-primary-600: #9d6fff;
+	--color-primary-700: #8050e6;
+	--color-primary-800: #6a3fc2;
+	--color-primary-900: #58359e;
+	--color-primary-950: #3a1f6b;
+
+	--color-primary-contrast-dark: #000000;
+	--color-primary-contrast-light: #ffffff;
+	--color-primary-contrast-50: var(--color-primary-contrast-dark);
+	--color-primary-contrast-100: var(--color-primary-contrast-dark);
+	--color-primary-contrast-200: var(--color-primary-contrast-dark);
+	--color-primary-contrast-300: var(--color-primary-contrast-dark);
+	--color-primary-contrast-400: var(--color-primary-contrast-dark);
+	--color-primary-contrast-500: var(--color-primary-contrast-dark);
+	--color-primary-contrast-600: var(--color-primary-contrast-light);
+	--color-primary-contrast-700: var(--color-primary-contrast-light);
+	--color-primary-contrast-800: var(--color-primary-contrast-light);
+	--color-primary-contrast-900: var(--color-primary-contrast-light);
+	--color-primary-contrast-950: var(--color-primary-contrast-light);
+
+	/* Secondary (Pink #ff79c6) */
+	--color-secondary-50: #fff0f7;
+	--color-secondary-100: #ffe3f1;
+	--color-secondary-200: #ffc6e5;
+	--color-secondary-300: #ff9ad4;
+	--color-secondary-400: #ff5eb8;
+	--color-secondary-500: #ff79c6;
+	--color-secondary-600: #f0479d;
+	--color-secondary-700: #d6297e;
+	--color-secondary-800: #b01d67;
+	--color-secondary-900: #921c59;
+	--color-secondary-950: #5a0a32;
+
+	--color-secondary-contrast-dark: #000000;
+	--color-secondary-contrast-light: #ffffff;
+	--color-secondary-contrast-50: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-100: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-200: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-300: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-400: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-500: var(--color-secondary-contrast-dark);
+	--color-secondary-contrast-600: var(--color-secondary-contrast-light);
+	--color-secondary-contrast-700: var(--color-secondary-contrast-light);
+	--color-secondary-contrast-800: var(--color-secondary-contrast-light);
+	--color-secondary-contrast-900: var(--color-secondary-contrast-light);
+	--color-secondary-contrast-950: var(--color-secondary-contrast-light);
+
+	/* Tertiary (Cyan #8be9fd) */
+	--color-tertiary-50: #ecfeff;
+	--color-tertiary-100: #cffafe;
+	--color-tertiary-200: #a5f3fc;
+	--color-tertiary-300: #67e8f9;
+	--color-tertiary-400: #22d3ee;
+	--color-tertiary-500: #8be9fd;
+	--color-tertiary-600: #06b6d4;
+	--color-tertiary-700: #0891b2;
+	--color-tertiary-800: #0e7490;
+	--color-tertiary-900: #155e75;
+	--color-tertiary-950: #083344;
+
+	--color-tertiary-contrast-dark: #000000;
+	--color-tertiary-contrast-light: #ffffff;
+	--color-tertiary-contrast-50: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-100: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-200: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-300: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-400: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-500: var(--color-tertiary-contrast-dark);
+	--color-tertiary-contrast-600: var(--color-tertiary-contrast-light);
+	--color-tertiary-contrast-700: var(--color-tertiary-contrast-light);
+	--color-tertiary-contrast-800: var(--color-tertiary-contrast-light);
+	--color-tertiary-contrast-900: var(--color-tertiary-contrast-light);
+	--color-tertiary-contrast-950: var(--color-tertiary-contrast-light);
+
+	/* Success (Green #50fa7b) */
+	--color-success-50: #f0fdf4;
+	--color-success-100: #dcfce7;
+	--color-success-200: #bbf7d0;
+	--color-success-300: #86efac;
+	--color-success-400: #4ade80;
+	--color-success-500: #50fa7b;
+	--color-success-600: #16a34a;
+	--color-success-700: #15803d;
+	--color-success-800: #166534;
+	--color-success-900: #14532d;
+	--color-success-950: #052e16;
+
+	--color-success-contrast-dark: #000000;
+	--color-success-contrast-light: #ffffff;
+	--color-success-contrast-50: var(--color-success-contrast-dark);
+	--color-success-contrast-100: var(--color-success-contrast-dark);
+	--color-success-contrast-200: var(--color-success-contrast-dark);
+	--color-success-contrast-300: var(--color-success-contrast-dark);
+	--color-success-contrast-400: var(--color-success-contrast-dark);
+	--color-success-contrast-500: var(--color-success-contrast-dark);
+	--color-success-contrast-600: var(--color-success-contrast-light);
+	--color-success-contrast-700: var(--color-success-contrast-light);
+	--color-success-contrast-800: var(--color-success-contrast-light);
+	--color-success-contrast-900: var(--color-success-contrast-light);
+	--color-success-contrast-950: var(--color-success-contrast-light);
+
+	/* Warning (Yellow #f1fa8c) */
+	--color-warning-50: #fefce8;
+	--color-warning-100: #fef9c3;
+	--color-warning-200: #fef08a;
+	--color-warning-300: #fde047;
+	--color-warning-400: #facc15;
+	--color-warning-500: #f1fa8c;
+	--color-warning-600: #ca8a04;
+	--color-warning-700: #a16207;
+	--color-warning-800: #854d0e;
+	--color-warning-900: #713f12;
+	--color-warning-950: #422006;
+
+	--color-warning-contrast-dark: #000000;
+	--color-warning-contrast-light: #ffffff;
+	--color-warning-contrast-50: var(--color-warning-contrast-dark);
+	--color-warning-contrast-100: var(--color-warning-contrast-dark);
+	--color-warning-contrast-200: var(--color-warning-contrast-dark);
+	--color-warning-contrast-300: var(--color-warning-contrast-dark);
+	--color-warning-contrast-400: var(--color-warning-contrast-dark);
+	--color-warning-contrast-500: var(--color-warning-contrast-dark);
+	--color-warning-contrast-600: var(--color-warning-contrast-light);
+	--color-warning-contrast-700: var(--color-warning-contrast-light);
+	--color-warning-contrast-800: var(--color-warning-contrast-light);
+	--color-warning-contrast-900: var(--color-warning-contrast-light);
+	--color-warning-contrast-950: var(--color-warning-contrast-light);
+
+	/* Error (Red #ff5555) */
+	--color-error-50: #fef2f2;
+	--color-error-100: #fee2e2;
+	--color-error-200: #fecaca;
+	--color-error-300: #fca5a5;
+	--color-error-400: #f87171;
+	--color-error-500: #ff5555;
+	--color-error-600: #dc2626;
+	--color-error-700: #b91c1c;
+	--color-error-800: #991b1b;
+	--color-error-900: #7f1d1d;
+	--color-error-950: #450a0a;
+
+	--color-error-contrast-dark: #000000;
+	--color-error-contrast-light: #ffffff;
+	--color-error-contrast-50: var(--color-error-contrast-dark);
+	--color-error-contrast-100: var(--color-error-contrast-dark);
+	--color-error-contrast-200: var(--color-error-contrast-dark);
+	--color-error-contrast-300: var(--color-error-contrast-dark);
+	--color-error-contrast-400: var(--color-error-contrast-dark);
+	--color-error-contrast-500: var(--color-error-contrast-dark);
+	--color-error-contrast-600: var(--color-error-contrast-light);
+	--color-error-contrast-700: var(--color-error-contrast-light);
+	--color-error-contrast-800: var(--color-error-contrast-light);
+	--color-error-contrast-900: var(--color-error-contrast-light);
+	--color-error-contrast-950: var(--color-error-contrast-light);
+
+	/* Surface (Dracula grays) */
+	--color-surface-50: #f8f8f2;
+	--color-surface-100: #f0f0eb;
+	--color-surface-200: #e0e0d9;
+	--color-surface-300: #c4c4b8;
+	--color-surface-400: #a8a896;
+	--color-surface-500: #6e6c7e;
+	--color-surface-600: #44475a;
+	--color-surface-700: #383a4a;
+	--color-surface-800: #282a36;
+	--color-surface-900: #21222c;
+	--color-surface-950: #191a21;
+
+	--color-surface-contrast-dark: #000000;
+	--color-surface-contrast-light: #ffffff;
+	--color-surface-contrast-50: var(--color-surface-contrast-dark);
+	--color-surface-contrast-100: var(--color-surface-contrast-dark);
+	--color-surface-contrast-200: var(--color-surface-contrast-dark);
+	--color-surface-contrast-300: var(--color-surface-contrast-dark);
+	--color-surface-contrast-400: var(--color-surface-contrast-dark);
+	--color-surface-contrast-500: var(--color-surface-contrast-light);
+	--color-surface-contrast-600: var(--color-surface-contrast-light);
+	--color-surface-contrast-700: var(--color-surface-contrast-light);
+	--color-surface-contrast-800: var(--color-surface-contrast-light);
+	--color-surface-contrast-900: var(--color-surface-contrast-light);
+	--color-surface-contrast-950: var(--color-surface-contrast-light);
+}
